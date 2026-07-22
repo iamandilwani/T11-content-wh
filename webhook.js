@@ -1,9 +1,9 @@
 // server/webhook.js
 // Stage 2: Real DM handling for @traveleleven.in
-// - Checks opt-out keywords first, always honored.
+// - Checks opt-out keywords first, always honored (NO MORE AI MESSAGES ONCE OPTED OUT).
 // - Sends a disclosed auto-reply (once per sender) within Meta's rules.
-// - Answers queries using Travel Eleven's offbeat group departures & custom trip workflows.
-// - Notifies Telegram whenever a real DM comes in.
+// - Answers queries using Travel Eleven's invite-only group departures & custom trip workflows.
+// - Notifies Telegram with Hot Lead alerts whenever a DM comes in.
 
 require('dotenv').config();
 const express = require('express');
@@ -89,20 +89,26 @@ const TRAVEL_ELEVEN_DATA = {
 const SYSTEM_PROMPT = `
 You are the Instagram DM assistant for @traveleleven.in ("Turning your 11:11 wishes into journeys.").
 
-BRAND VIBE & RULES:
-- Tone: Offbeat, curated, real, warm, and casual (Indian English friendly).
+BRAND CONCEPT:
+- Travel Eleven is an EXCLUSIVE, INVITE-ONLY offbeat travel community!
+- Guests do not directly add to cart; they click "Request Invite" on the website so our team can curate the squad.
+- Tone: Offbeat, curated, real, exclusive yet warm, and casual (Indian English friendly).
 - Length: Keep replies under 2-3 short sentences max. This is an Instagram DM!
-- Never fabricate dates or prices. Always stick strict to the provided data.
-
-OUR OFFERINGS:
-1. FIXED GROUP DEPARTURES: Gumbok Rangan, Yulla Kanda, and Hidden Himachal Workation.
-2. CUSTOMIZED TRIPS: We build 100% personalized offbeat itineraries for ANY destination (India or International).
 
 CONVERSATION LOGIC:
-- If asked about Gumbok Rangan, Yulla Kanda, or Workation: Give starting price, duration, key dates (e.g. mention the Janmashtami Special for Yulla if relevant), and share the exact itinerary link. End with a soft question: "Want me to send over the full day-wise plan?"
-- If asked about Custom Trips or ANY other destination (e.g. Spiti, Kashmir, Bali, Vietnam, Europe): Enthusiastically confirm we customize trips there! Ask for their travel dates, group size, and WhatsApp number so our trip architect can reach out with a tailored plan.
-- Urgent Bookings / Support: Share our official WhatsApp (+91 94859 86981).
-- Collaborations / Sponsorships: Warmly acknowledge and state a real team member will follow up.
+1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on the experience, dates, and exclusivity.
+2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation):
+   - Highlight that slots are strictly limited and invite-only to keep squad vibes right.
+   - Give duration, dates, and direct link.
+   - Call to Action: Direct them to click "Request Invite" on the website link or drop their WhatsApp number right here so our team can review their request!
+3. CUSTOMIZED TRIPS / OTHER LOCATIONS (e.g., Kashmir, Spiti, Bali, Europe):
+   - Enthusiastically confirm we curate custom offbeat journeys for any location.
+   - Ask for their travel dates, group size, and WhatsApp number so our travel architect can extend an invitation/quote.
+4. SAFETY, GROUP SIZE & WEATHER QUESTIONS:
+   - Safety for Girls/Solo Travelers: Reassure warmly! Over 50% of our community members are solo women. Our invite-only vetting ensures a safe, respectful squad, led by experienced ground captains.
+   - Group Size: Explain that we run micro-groups (6-15 people for group trips, 5-7 for workations) to maintain real community vibes rather than commercial tourist buses.
+   - Weather/Road Conditions: Reassure that departures are scheduled during safe seasons and monitored daily by ground teams. Invite them to drop their WhatsApp or text +91 94859 86981 for live updates.
+5. URGENT BOOKINGS: Share official WhatsApp (+91 94859 86981).
 
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
@@ -112,7 +118,7 @@ async function generateReply(messageText) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -187,7 +193,7 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200); // ack immediately, process after
+  res.sendStatus(200); // ack immediately
 
   try {
     const entries = req.body.entry || [];
@@ -198,26 +204,28 @@ app.post('/webhook', async (req, res) => {
         const messageText = event.message?.text;
         const isEcho = event.message?.is_echo === true;
 
-        if (isEcho) continue;
+        // HUMAN TAKEOVER: If a human agent sends a message from Instagram / Meta Business Suite,
+// automatically pause the AI for this client!
+        if (isEcho) {
+          if (senderId) {
+            optedOut.add(senderId); // Pause AI for this chat
+            console.log(`⏸️ Human agent took over chat for ${senderId}. AI disabled.`);
+          }
+          continue;
+}
         if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
 
+        // HARD OPT-OUT RULE: Always honored first.
         if (OPT_OUT_WORDS.some((w) => messageText.toLowerCase().includes(w))) {
           optedOut.add(senderId);
           await sendInstagramReply(senderId, OPT_OUT_CONFIRM);
-          const isPhoneNo = /\d{10}/.test(messageText); // Detects 10-digit Indian numbers
-          const prefix = isPhoneNo ? "🚨 <b>HOT LEAD / PHONE NO DETECTED!</b>\n\n" : "";
-
-          await notifyTelegram(
-            `${prefix}💬 <b>New Instagram DM</b>\n` +
-            `<b>From User ID:</b> ${senderId}\n` +
-            `<b>User Said:</b> ${messageText}\n\n` +
-            `<b>AI Replied:</b> ${generated}`
-);
+          await notifyTelegram(`🚫 ${senderId} opted out of DM automation.`);
           continue;
         }
 
+        // NO AI MESSAGES ONCE OUT
         if (optedOut.has(senderId)) {
           console.log(`Skipping reply — ${senderId} previously opted out.`);
           continue;
@@ -230,8 +238,15 @@ app.post('/webhook', async (req, res) => {
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
 
+        // Detect 10-digit Indian phone numbers for Telegram Lead Alert
+        const hasPhoneNumber = /\b[6-9]\d{9}\b/.test(messageText);
+        const leadBanner = hasPhoneNumber ? "🚨 <b>HOT LEAD (PHONE NUMBER DETECTED)</b>\n\n" : "";
+
         await notifyTelegram(
-          `💬 <b>New DM</b>\nFrom: ${senderId}\nMessage: ${messageText.slice(0, 200)}`
+          `${leadBanner}💬 <b>New Instagram DM</b>\n` +
+          `<b>From User ID:</b> ${senderId}\n` +
+          `<b>User:</b> ${messageText}\n` +
+          `<b>AI Reply:</b> ${reply}`
         );
       }
     }
@@ -247,7 +262,7 @@ app.get('/privacy', (req, res) => {
       <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.6;">
         <h1>Privacy Policy</h1>
         <p>This application ("Travel Eleven Content Agent") is an automation tool used to manage direct messages for the Instagram account @traveleleven.in.</p>
-        <p>Messages received are processed strictly to send automated trip recommendations and context. No personal data is stored or sold to third parties.</p>
+        <p>Messages received are processed strictly to send automated trip recommendations and context. Users can send "stop" to unsubscribe at any time.</p>
       </body>
     </html>
   `);
