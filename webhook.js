@@ -244,8 +244,24 @@ app.post('/webhook', async (req, res) => {
         const messageText = event.message?.text;
         const isEcho = event.message?.is_echo === true;
 
-        if (isEcho) continue; // Ignore echoes
-        if (!senderId || !messageText) continue;
+// --- ACCURATE HUMAN TAKEOVER LOGIC ---
+if (isEcho) {
+  const recipientId = event.recipient?.id;
+  const appId = event.message?.app_id;
+
+  // If there is NO app_id (or app_id doesn't match our API calls), 
+  // it means a REAL HUMAN typed this reply inside Instagram / Meta Business Suite!
+  if (recipientId && !appId) {
+    optedOut.add(recipientId); // Mute AI for this specific client
+    console.log(`👤 REAL HUMAN TAKEOVER detected for user ${recipientId}. AI muted!`);
+    
+    await notifyTelegram(
+      `👤 <b>Human Takeover Active</b>\n` +
+      `AI has been automatically paused for client <code>${recipientId}</code> because a human team member replied in Instagram/Meta Suite.`
+    );
+  }
+  continue; // Ignore echo processing
+}        if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
 
