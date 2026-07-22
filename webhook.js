@@ -64,7 +64,12 @@ async function generateReply(messageText) {
       }
     );
     const data = await res.json();
+    if (!res.ok) {
+      console.error('❌ Gemini API error:', JSON.stringify(data));
+      return FALLBACK_REPLY;
+    }
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) console.error('❌ Gemini returned no text:', JSON.stringify(data));
     return text || FALLBACK_REPLY;
   } catch (err) {
     console.error('❌ Gemini generation failed:', err.message);
@@ -126,6 +131,12 @@ app.post('/webhook', async (req, res) => {
       for (const event of messaging) {
         const senderId = event.sender?.id;
         const messageText = event.message?.text;
+        const isEcho = event.message?.is_echo === true;
+
+        // Ignore echoes of our own outgoing messages - otherwise the bot
+        // replies to itself in an infinite loop.
+        if (isEcho) continue;
+
         if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
