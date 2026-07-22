@@ -123,6 +123,25 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+app.get('/privacy', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>Privacy Policy — Traveleleven Content Agent</title></head>
+      <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.6;">
+        <h1>Privacy Policy</h1>
+        <p>This application ("Traveleleven Content Agent") is a personal automation tool used to manage
+        direct messages for the Instagram account @traveleleven.in.</p>
+        <p>When someone sends a direct message to @traveleleven.in, this app may receive that message
+        via Meta's Instagram Messaging API in order to send an automated acknowledgment reply. No message
+        content is sold, shared with third parties, or used for advertising. Messages are used solely to
+        provide a timely response to the sender.</p>
+        <p>Users can stop automated replies at any time by sending "stop" or "unsubscribe" in their message.</p>
+        <p>For questions about this policy, contact the account owner via Instagram DM at @traveleleven.in.</p>
+      </body>
+    </html>
+  `);
+});
+
 app.get('/', (req, res) => {
   res.send('Content agent webhook server is running.');
 });
