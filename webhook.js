@@ -1,9 +1,9 @@
 // server/webhook.js
-// Stage 2: Real DM handling for @traveleleven.in
-// - Prevents false human-takeover loops by tracking bot message IDs.
-// - Mutes AI automatically when human team replies in IG/Meta suite.
-// - Real-time Telegram alert ONLY for Hot Leads (Phone Numbers).
-// - Daily 9 PM Telegram Summary for Hot Leads & High-Intent Follow-ups.
+// Travel Eleven Instagram & Telegram Bot Server
+// - Auto-replies to IG DMs using Gemini 2.5 Flash.
+// - Real-time Telegram alerts for Hot Leads (Phone Numbers).
+// - Scheduled 9 PM IST Daily Summary Report.
+// - On-Demand Telegram Commands (/report, /hot, /reset).
 
 require('dotenv').config();
 const express = require('express');
@@ -19,9 +19,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const seenSenders = new Set();
 const optedOut = new Set();
-const botMessageIds = new Set(); // Tracks outgoing AI message IDs
 
-// In-Memory Daily Analytics (Resets at midnight)
+// In-Memory Daily Analytics (Resets at midnight or via /reset)
 let dailyStats = {
   totalInquiries: 0,
   hotLeads: [],       // { senderId, text, phone }
@@ -30,8 +29,10 @@ let dailyStats = {
 };
 
 const OPT_OUT_WORDS = ['stop', 'unsubscribe', 'opt out', 'opt-out'];
+const UNMUTE_WORDS = ['start', 'unmute', 'activate'];
 const DISCLOSURE = "Hi! This is Travel Eleven's automated assistant 👋 ";
-const OPT_OUT_CONFIRM = "Got it — you won't receive any more automated replies from this account.";
+const OPT_OUT_CONFIRM = "Got it — automated replies are paused for this chat.";
+const UNMUTE_CONFIRM = "Welcome back! Automated assistant is re-enabled ✨";
 const FALLBACK_REPLY =
   "Thanks for reaching out! I'll make sure a real human travel architect sees this and gets back to you shortly.";
 
@@ -128,7 +129,7 @@ async function generateReply(messageText) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,10 +172,6 @@ async function sendInstagramReply(recipientId, text) {
   const data = await res.json();
   if (!res.ok) {
     console.error('❌ Failed to send Instagram reply:', JSON.stringify(data));
-  } else if (data.message_id) {
-    // Store Bot Message ID so we can ignore its echo later
-    botMessageIds.add(data.message_id);
-    setTimeout(() => botMessageIds.delete(data.message_id), 120000);
   }
   return data;
 }
@@ -192,6 +189,35 @@ async function notifyTelegram(text) {
   }
 }
 
+// Function to Format and Send Lead Summary
+function generateReportText(title = "LIVE LEAD REPORT") {
+  let hotLeadsText = dailyStats.hotLeads.length > 0 
+    ? dailyStats.hotLeads.map((l, i) => `${i + 1}. <b>${l.phone}</b> (ID: <code>${l.senderId}</code>)\n   Msg: "${l.text.slice(0, 80)}"`).join('\n')
+    : 'None captured so far.';
+
+  let followUpText = dailyStats.followUpLeads.length > 0
+    ? dailyStats.followUpLeads.map((l, i) => `${i + 1}. User <code>${l.senderId}</code>\n   Asked: "${l.text.slice(0, 80)}"`).join('\n')
+    : 'None so far.';
+
+  return `
+📊 <b>${title} — Travel Eleven</b>
+--------------------------------------------
+📥 <b>Total Inquiries Today:</b> ${dailyStats.totalInquiries}
+🔥 <b>Hot Leads (Phone Numbers):</b> ${dailyStats.hotLeads.length}
+⏳ <b>Follow-up Needed:</b> ${dailyStats.followUpLeads.length}
+💬 <b>Casual Conversations:</b> ${dailyStats.casualCount}
+
+--------------------------------------------
+🔥 <b>HOT LEADS TO CONTACT:</b>
+${hotLeadsText}
+
+--------------------------------------------
+⏳ <b>HIGH-INTENT FOLLOW-UPS (No Phone Yet):</b>
+${followUpText}
+  `.trim();
+}
+
+// --- INSTAGRAM WEBHOOK ENDPOINTS ---
 app.get('/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -207,7 +233,7 @@ app.get('/webhook', (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  res.sendStatus(200); // ack immediately
+  res.sendStatus(200); // Ack immediately
 
   try {
     const entries = req.body.entry || [];
@@ -218,38 +244,30 @@ app.post('/webhook', async (req, res) => {
         const messageText = event.message?.text;
         const isEcho = event.message?.is_echo === true;
 
-        // --- FIXED HUMAN TAKEOVER LOGIC ---
-        if (isEcho) {
-          const messageId = event.message?.mid;
-          const recipientId = event.recipient?.id;
-
-          // Ignore echoes produced by our own AI
-          if (messageId && botMessageIds.has(messageId)) {
-            continue;
-          }
-
-          // If echo was NOT created by AI, a REAL HUMAN typed it in IG app!
-          if (recipientId) {
-            optedOut.add(recipientId); // Disable AI for this recipient
-            console.log(`👤 Human Takeover for ${recipientId}. AI disabled.`);
-            await notifyTelegram(`👤 <b>Human Takeover</b>: AI muted for recipient <code>${recipientId}</code> because a human team member replied in Instagram.`);
-          }
-          continue;
-        }
-
+        if (isEcho) continue; // Ignore echoes
         if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
 
-        // HARD OPT-OUT RULE: Always honored first.
-        if (OPT_OUT_WORDS.some((w) => messageText.toLowerCase().includes(w))) {
-          optedOut.add(senderId);
-          await sendInstagramReply(senderId, OPT_OUT_CONFIRM);
-          await notifyTelegram(`🚫 User <code>${senderId}</code> opted out of automation.`);
+        const lowerMsg = messageText.toLowerCase().trim();
+
+        // 1. RE-ENABLE RULE
+        if (UNMUTE_WORDS.some((w) => lowerMsg === w)) {
+          optedOut.delete(senderId);
+          await sendInstagramReply(senderId, UNMUTE_CONFIRM);
+          await notifyTelegram(`🟢 User <code>${senderId}</code> re-enabled AI bot.`);
           continue;
         }
 
-        // NO AI MESSAGES ONCE MUTED / OPTED OUT
+        // 2. HARD OPT-OUT RULE
+        if (OPT_OUT_WORDS.some((w) => lowerMsg.includes(w))) {
+          optedOut.add(senderId);
+          await sendInstagramReply(senderId, OPT_OUT_CONFIRM);
+          await notifyTelegram(`🚫 User <code>${senderId}</code> opted out / paused AI.`);
+          continue;
+        }
+
+        // 3. IF MUTED, SKIP
         if (optedOut.has(senderId)) {
           console.log(`Skipping reply — ${senderId} is muted / opted out.`);
           continue;
@@ -262,15 +280,14 @@ app.post('/webhook', async (req, res) => {
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
 
-        // --- LEAD CATEGORIZATION LOGIC ---
+        // --- LEAD CATEGORIZATION ---
         dailyStats.totalInquiries++;
 
-        const phoneMatch = messageText.match(/\b[6-9]\d{9}\b/); // Detects 10-digit Indian phone
+        const phoneMatch = messageText.match(/\b[6-9]\d{9}\b/);
         const highIntentKeywords = ['price', 'cost', 'dates', 'book', 'how to join', 'itinerary', 'safe', 'workation', 'yulla', 'gumbok'];
-        const isHighIntent = highIntentKeywords.some(kw => messageText.toLowerCase().includes(kw));
+        const isHighIntent = highIntentKeywords.some(kw => lowerMsg.includes(kw));
 
         if (phoneMatch) {
-          // 1. 🔥 HOT LEAD (Instant Telegram Alert)
           const phone = phoneMatch[0];
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
           
@@ -282,10 +299,8 @@ app.post('/webhook', async (req, res) => {
             `⚡ <i>Call or WhatsApp them right now!</i>`
           );
         } else if (isHighIntent) {
-          // 2. ⏳ FOLLOW-UP LEAD (Tracked silently for Daily Summary)
           dailyStats.followUpLeads.push({ senderId, text: messageText });
         } else {
-          // 3. 💬 CASUAL ENQUIRY
           dailyStats.casualCount++;
         }
       }
@@ -295,36 +310,34 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
+// --- ON-DEMAND TELEGRAM COMMANDS (/report, /hot, /reset) ---
+app.post('/telegram-webhook', async (req, res) => {
+  res.sendStatus(200);
+
+  try {
+    const text = req.body.message?.text?.toLowerCase()?.trim();
+    if (!text) return;
+
+    if (text === '/report' || text === 'report' || text === 'summary') {
+      await notifyTelegram(generateReportText("ON-DEMAND LEAD REPORT"));
+    } else if (text === '/hot' || text === 'hot') {
+      let hotText = dailyStats.hotLeads.length > 0
+        ? dailyStats.hotLeads.map((l, i) => `${i + 1}. <b>${l.phone}</b> (ID: <code>${l.senderId}</code>)\n   Msg: "${l.text}"`).join('\n\n')
+        : 'No hot leads captured yet today.';
+      await notifyTelegram(`🔥 <b>HOT LEADS TODAY (${dailyStats.hotLeads.length})</b>\n\n${hotText}`);
+    } else if (text === '/reset' || text === 'reset') {
+      dailyStats = { totalInquiries: 0, hotLeads: [], followUpLeads: [], casualCount: 0 };
+      await notifyTelegram(`🔄 <b>Daily lead stats have been reset!</b>`);
+    }
+  } catch (err) {
+    console.error('❌ Error handling Telegram command:', err.message);
+  }
+});
+
 // --- AUTOMATED DAILY SUMMARY AT 9:00 PM IST ---
 cron.schedule('0 21 * * *', async () => {
   console.log('📊 Generating Daily Telegram Lead Report...');
-
-  let hotLeadsText = dailyStats.hotLeads.length > 0 
-    ? dailyStats.hotLeads.map((l, i) => `${i + 1}. <b>${l.phone}</b> (ID: <code>${l.senderId}</code>)\n   Msg: "${l.text.slice(0, 80)}"`).join('\n')
-    : 'None captured today.';
-
-  let followUpText = dailyStats.followUpLeads.length > 0
-    ? dailyStats.followUpLeads.map((l, i) => `${i + 1}. User <code>${l.senderId}</code>\n   Asked: "${l.text.slice(0, 80)}"`).join('\n')
-    : 'None today.';
-
-  const report = `
-📊 <b>DAILY LEAD REPORT — Travel Eleven</b>
---------------------------------------------
-📥 <b>Total Inquiries Today:</b> ${dailyStats.totalInquiries}
-🔥 <b>Hot Leads (Phone Numbers):</b> ${dailyStats.hotLeads.length}
-⏳ <b>Follow-up Needed:</b> ${dailyStats.followUpLeads.length}
-💬 <b>Casual Conversations:</b> ${dailyStats.casualCount}
-
---------------------------------------------
-🔥 <b>HOT LEADS TO CONTACT:</b>
-${hotLeadsText}
-
---------------------------------------------
-⏳ <b>HIGH-INTENT FOLLOW-UPS (No Phone Yet):</b>
-${followUpText}
-  `.trim();
-
-  await notifyTelegram(report);
+  await notifyTelegram(generateReportText("DAILY LEAD SUMMARY REPORT"));
 
   // Reset stats for the next day
   dailyStats = {
