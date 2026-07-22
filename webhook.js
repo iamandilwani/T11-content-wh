@@ -15,25 +15,62 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// TEMPORARY DIAGNOSTIC: log every single incoming request, no matter the path.
-app.use((req, res, next) => {
-  console.log(`🔎 ${req.method} ${req.url}`);
-  next();
-});
-
 const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN;
 const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const seenSenders = new Set();
 const optedOut = new Set();
 
 const OPT_OUT_WORDS = ['stop', 'unsubscribe', 'opt out', 'opt-out'];
 const DISCLOSURE = "Hi! This is Traveleleven's automated assistant 👋 ";
-const DEFAULT_REPLY =
-  "Thanks for reaching out! I'll make sure a real human sees this and gets back to you soon. In the meantime, feel free to check out the latest posts on the grid!";
 const OPT_OUT_CONFIRM = "Got it — you won't receive any more automated replies from this account.";
+const FALLBACK_REPLY =
+  "Thanks for reaching out! I'll make sure a real human sees this and gets back to you soon.";
+
+const SYSTEM_PROMPT = `
+You are a short, friendly Instagram DM assistant for @traveleleven.in, a travel content creator
+focused on India-based travel/exploration content.
+
+Rules:
+- Keep replies under 2 short sentences. This is a DM, not an email.
+- Be warm and casual, matching a travel-creator's voice.
+- NEVER invent facts: no rates, prices, collab terms, locations, or promises you don't know.
+- If the message sounds like a business/collab/sponsorship inquiry, acknowledge it warmly and say
+  a real person will follow up directly - do not attempt to negotiate or give details.
+- If the message is a simple question you can answer generally (e.g. "do you edit your own videos?"),
+  answer briefly and naturally.
+- If unsure what they want, ask a short friendly clarifying question.
+- Never claim to be human. If asked directly, be honest that you're an automated assistant.
+`.trim();
+
+async function generateReply(messageText) {
+  if (!GEMINI_API_KEY) return FALLBACK_REPLY;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: `${SYSTEM_PROMPT}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }],
+            },
+          ],
+        }),
+      }
+    );
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    return text || FALLBACK_REPLY;
+  } catch (err) {
+    console.error('❌ Gemini generation failed:', err.message);
+    return FALLBACK_REPLY;
+  }
+}
 
 async function sendInstagramReply(recipientId, text) {
   const url = `https://graph.instagram.com/v21.0/me/messages?access_token=${IG_ACCESS_TOKEN}`;
@@ -81,7 +118,6 @@ app.get('/webhook', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200); // ack immediately, process after
-  console.log('📦 RAW BODY:', JSON.stringify(req.body));
 
   try {
     const entries = req.body.entry || [];
@@ -110,7 +146,8 @@ app.post('/webhook', async (req, res) => {
         const isFirstContact = !seenSenders.has(senderId);
         seenSenders.add(senderId);
 
-        const reply = isFirstContact ? DISCLOSURE + DEFAULT_REPLY : DEFAULT_REPLY;
+        const generated = await generateReply(messageText);
+        const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
 
         await notifyTelegram(
