@@ -81,6 +81,7 @@ app.get('/webhook', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200); // ack immediately, process after
+  console.log('📦 RAW BODY:', JSON.stringify(req.body));
 
   try {
     const entries = req.body.entry || [];
