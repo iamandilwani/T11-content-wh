@@ -15,6 +15,12 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
+// TEMPORARY DIAGNOSTIC: log every single incoming request, no matter the path.
+app.use((req, res, next) => {
+  console.log(`🔎 ${req.method} ${req.url}`);
+  next();
+});
+
 const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN;
 const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
