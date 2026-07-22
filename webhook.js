@@ -1,14 +1,9 @@
 // server/webhook.js
-// Stage 2: real DM handling.
+// Stage 2: Real DM handling for @traveleleven.in
 // - Checks opt-out keywords first, always honored.
 // - Sends a disclosed auto-reply (once per sender) within Meta's rules.
-// - Notifies your Telegram whenever a real DM comes in.
-//
-// NOTE ON PERSISTENCE: "seenSenders" and "optedOut" are in-memory only.
-// Render's free tier can restart/sleep the server, which resets this list —
-// meaning a returning user might see the disclosure line again after a
-// restart. Fine for an MVP; if this matters long-term, swap these Sets for
-// a small persistent store (e.g. a free Postgres/Redis add-on).
+// - Answers queries using Travel Eleven's offbeat group departures & custom trip workflows.
+// - Notifies Telegram whenever a real DM comes in.
 
 require('dotenv').config();
 const express = require('express');
@@ -25,32 +20,99 @@ const seenSenders = new Set();
 const optedOut = new Set();
 
 const OPT_OUT_WORDS = ['stop', 'unsubscribe', 'opt out', 'opt-out'];
-const DISCLOSURE = "Hi! This is Traveleleven's automated assistant 👋 ";
+const DISCLOSURE = "Hi! This is Travel Eleven's automated assistant 👋 ";
 const OPT_OUT_CONFIRM = "Got it — you won't receive any more automated replies from this account.";
 const FALLBACK_REPLY =
-  "Thanks for reaching out! I'll make sure a real human sees this and gets back to you soon.";
+  "Thanks for reaching out! I'll make sure a real human travel architect sees this and gets back to you shortly.";
+
+// Travel Eleven Brand & Knowledge Base
+const TRAVEL_ELEVEN_DATA = {
+  brand: {
+    name: "Travel Eleven",
+    tagline: "Turning your 11:11 wishes into journeys.",
+    descriptor: "Offbeat. Curated. Real.",
+    whatsapp: "+91 94859 86981"
+  },
+  group_departures: [
+    {
+      id: "gumbok",
+      name: "Gumbok Rangan with Jispa",
+      location: "Zanskar, India",
+      duration: "4D/3N",
+      groupSize: "6-15",
+      tags: ["Stargazing", "Remote Valley"],
+      description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
+      price: "₹11,999/-",
+      dates: [
+        { label: "13 Aug '26", status: "Available" },
+        { label: "10 Sep '26", status: "Available" },
+        { label: "08 Oct '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary.html?trip=gumbok"
+    },
+    {
+      id: "yulla",
+      name: "Yulla Kanda Trek",
+      location: "Himachal Pradesh",
+      duration: "3D/2N",
+      groupSize: "6-15",
+      tags: ["World's Highest Krishna Temple", "Trek"],
+      description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
+      price: "₹8,999/-",
+      dates: [
+        { label: "27 Aug '26", status: "Available" },
+        { label: "02 Sep '26 (Janmashtami Special)", status: "Available" },
+        { label: "17 Sep '26", status: "Available" },
+        { label: "24 Sep '26", status: "Available" },
+        { label: "01 Oct '26", status: "Available" },
+        { label: "15 Oct '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary.html?trip=yulla"
+    },
+    {
+      id: "workation",
+      name: "Hidden Himachal Workation",
+      location: "Himachal Pradesh",
+      duration: "7 Days",
+      groupSize: "5-7 people",
+      tags: ["Workation Trip", "Himachal"],
+      description: "Unstructured, slow-paced workation for remote workers & creators in a traditional insulated mud house with reliable Wi-Fi.",
+      price: "₹11,999/-",
+      dates: [
+        { label: "30 July '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary.html?trip=workation"
+    }
+  ]
+};
 
 const SYSTEM_PROMPT = `
-You are a short, friendly Instagram DM assistant for @traveleleven.in, a travel content creator
-focused on India-based travel/exploration content.
+You are the Instagram DM assistant for @traveleleven.in ("Turning your 11:11 wishes into journeys.").
 
-Rules:
-- Keep replies under 2 short sentences. This is a DM, not an email.
-- Be warm and casual, matching a travel-creator's voice.
-- NEVER invent facts: no rates, prices, collab terms, locations, or promises you don't know.
-- If the message sounds like a business/collab/sponsorship inquiry, acknowledge it warmly and say
-  a real person will follow up directly - do not attempt to negotiate or give details.
-- If the message is a simple question you can answer generally (e.g. "do you edit your own videos?"),
-  answer briefly and naturally.
-- If unsure what they want, ask a short friendly clarifying question.
-- Never claim to be human. If asked directly, be honest that you're an automated assistant.
+BRAND VIBE & RULES:
+- Tone: Offbeat, curated, real, warm, and casual (Indian English friendly).
+- Length: Keep replies under 2-3 short sentences max. This is an Instagram DM!
+- Never fabricate dates or prices. Always stick strict to the provided data.
+
+OUR OFFERINGS:
+1. FIXED GROUP DEPARTURES: Gumbok Rangan, Yulla Kanda, and Hidden Himachal Workation.
+2. CUSTOMIZED TRIPS: We build 100% personalized offbeat itineraries for ANY destination (India or International).
+
+CONVERSATION LOGIC:
+- If asked about Gumbok Rangan, Yulla Kanda, or Workation: Give starting price, duration, key dates (e.g. mention the Janmashtami Special for Yulla if relevant), and share the exact itinerary link. End with a soft question: "Want me to send over the full day-wise plan?"
+- If asked about Custom Trips or ANY other destination (e.g. Spiti, Kashmir, Bali, Vietnam, Europe): Enthusiastically confirm we customize trips there! Ask for their travel dates, group size, and WhatsApp number so our trip architect can reach out with a tailored plan.
+- Urgent Bookings / Support: Share our official WhatsApp (+91 94859 86981).
+- Collaborations / Sponsorships: Warmly acknowledge and state a real team member will follow up.
+
+KNOWLEDGE BASE:
+${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
 `.trim();
 
 async function generateReply(messageText) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,6 +122,9 @@ async function generateReply(messageText) {
               parts: [{ text: `${SYSTEM_PROMPT}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }],
             },
           ],
+          generationConfig: {
+            temperature: 0.3
+          }
         }),
       }
     );
@@ -133,19 +198,23 @@ app.post('/webhook', async (req, res) => {
         const messageText = event.message?.text;
         const isEcho = event.message?.is_echo === true;
 
-        // Ignore echoes of our own outgoing messages - otherwise the bot
-        // replies to itself in an infinite loop.
         if (isEcho) continue;
-
         if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
 
-        // Hard rule: opt-out is always honored, no exceptions.
         if (OPT_OUT_WORDS.some((w) => messageText.toLowerCase().includes(w))) {
           optedOut.add(senderId);
           await sendInstagramReply(senderId, OPT_OUT_CONFIRM);
-          await notifyTelegram(`🚫 ${senderId} opted out of DM automation.`);
+          const isPhoneNo = /\d{10}/.test(messageText); // Detects 10-digit Indian numbers
+          const prefix = isPhoneNo ? "🚨 <b>HOT LEAD / PHONE NO DETECTED!</b>\n\n" : "";
+
+          await notifyTelegram(
+            `${prefix}💬 <b>New Instagram DM</b>\n` +
+            `<b>From User ID:</b> ${senderId}\n` +
+            `<b>User Said:</b> ${messageText}\n\n` +
+            `<b>AI Replied:</b> ${generated}`
+);
           continue;
         }
 
@@ -174,26 +243,19 @@ app.post('/webhook', async (req, res) => {
 app.get('/privacy', (req, res) => {
   res.send(`
     <html>
-      <head><title>Privacy Policy — Traveleleven Content Agent</title></head>
+      <head><title>Privacy Policy — Travel Eleven</title></head>
       <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.6;">
         <h1>Privacy Policy</h1>
-        <p>This application ("Traveleleven Content Agent") is a personal automation tool used to manage
-        direct messages for the Instagram account @traveleleven.in.</p>
-        <p>When someone sends a direct message to @traveleleven.in, this app may receive that message
-        via Meta's Instagram Messaging API in order to send an automated acknowledgment reply. No message
-        content is sold, shared with third parties, or used for advertising. Messages are used solely to
-        provide a timely response to the sender.</p>
-        <p>Users can stop automated replies at any time by sending "stop" or "unsubscribe" in their message.</p>
-        <p>For questions about this policy, contact the account owner via Instagram DM at @traveleleven.in.</p>
+        <p>This application ("Travel Eleven Content Agent") is an automation tool used to manage direct messages for the Instagram account @traveleleven.in.</p>
+        <p>Messages received are processed strictly to send automated trip recommendations and context. No personal data is stored or sold to third parties.</p>
       </body>
     </html>
   `);
 });
 
 app.get('/', (req, res) => {
-  res.send('Content agent webhook server is running.');
+  res.send('Travel Eleven webhook server is running.');
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Webhook server listening on port ${PORT}`));
-
