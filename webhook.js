@@ -129,7 +129,7 @@ async function generateReply(messageText) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -267,6 +267,9 @@ if (isEcho) {
 
         const lowerMsg = messageText.toLowerCase().trim();
 
+        // Whole-word match so phrases like "any stopovers?" don't false-trigger.
+        const wordsInMsg = lowerMsg.split(/\W+/);
+
         // 1. RE-ENABLE RULE
         if (UNMUTE_WORDS.some((w) => lowerMsg === w)) {
           optedOut.delete(senderId);
@@ -276,7 +279,12 @@ if (isEcho) {
         }
 
         // 2. HARD OPT-OUT RULE
-        if (OPT_OUT_WORDS.some((w) => lowerMsg.includes(w))) {
+        if (OPT_OUT_WORDS.some((phrase) => {
+          const phraseWords = phrase.split(/\W+/);
+          return phraseWords.length === 1
+            ? wordsInMsg.includes(phraseWords[0])
+            : lowerMsg.includes(phrase); // multi-word phrases like "opt out" stay as substring match
+        })) {
           optedOut.add(senderId);
           await sendInstagramReply(senderId, OPT_OUT_CONFIRM);
           await notifyTelegram(`🚫 User <code>${senderId}</code> opted out / paused AI.`);
@@ -331,8 +339,17 @@ app.post('/telegram-webhook', async (req, res) => {
   res.sendStatus(200);
 
   try {
+    const incomingChatId = req.body.message?.chat?.id?.toString();
     const text = req.body.message?.text?.toLowerCase()?.trim();
     if (!text) return;
+
+    // Security: only YOU (the configured chat id) can trigger these commands.
+    // Without this, anyone who discovers this URL could POST a fake payload
+    // and wipe your lead data via /reset.
+    if (!incomingChatId || incomingChatId !== TELEGRAM_CHAT_ID?.toString()) {
+      console.log(`⚠️ Ignored Telegram command from unauthorized chat id: ${incomingChatId}`);
+      return;
+    }
 
     if (text === '/report' || text === 'report' || text === 'summary') {
       await notifyTelegram(generateReportText("ON-DEMAND LEAD REPORT"));
@@ -344,6 +361,22 @@ app.post('/telegram-webhook', async (req, res) => {
     } else if (text === '/reset' || text === 'reset') {
       dailyStats = { totalInquiries: 0, hotLeads: [], followUpLeads: [], casualCount: 0 };
       await notifyTelegram(`🔄 <b>Daily lead stats have been reset!</b>`);
+    } else if (text.startsWith('/mute')) {
+      const senderId = text.split(/\s+/)[1];
+      if (!senderId) {
+        await notifyTelegram(`⚠️ Usage: <code>/mute SENDER_ID</code>\n(Find the sender ID in any lead notification above.)`);
+      } else {
+        optedOut.add(senderId);
+        await notifyTelegram(`🔇 AI manually muted for <code>${senderId}</code>. It will not auto-reply to this person until you send <code>/unmute ${senderId}</code>.`);
+      }
+    } else if (text.startsWith('/unmute')) {
+      const senderId = text.split(/\s+/)[1];
+      if (!senderId) {
+        await notifyTelegram(`⚠️ Usage: <code>/unmute SENDER_ID</code>`);
+      } else {
+        optedOut.delete(senderId);
+        await notifyTelegram(`🔊 AI re-enabled for <code>${senderId}</code>.`);
+      }
     }
   } catch (err) {
     console.error('❌ Error handling Telegram command:', err.message);

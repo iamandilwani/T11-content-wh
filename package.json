@@ -1,5 +1,5 @@
 {
-  "name": "content-agent-webhook",
+  "name": "traveleleven-webhook",
   "version": "1.0.0",
   "private": true,
   "main": "webhook.js",
@@ -7,8 +7,8 @@
     "start": "node webhook.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "node-cron": "^4.6.0"
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
   }
 }
