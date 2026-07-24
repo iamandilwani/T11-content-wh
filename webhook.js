@@ -66,6 +66,11 @@ function identifyLabel(senderId) {
   return name ? `@${name} (<code>${senderId}</code>)` : `<code>${senderId}</code>`;
 }
 
+function plainLabel(senderId) {
+  const name = senderNames.get(senderId);
+  return name ? `@${name}` : senderId;
+}
+
 function trackConversation(senderId, messageText) {
   recentConversations.set(senderId, { lastMessage: messageText, lastSeen: new Date() });
   // Keep only the most recent MAX_RECENT conversations, oldest dropped.
@@ -366,7 +371,7 @@ if (!senderId || !messageText) continue;
         if (phoneMatch) {
           const phone = phoneMatch[0];
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
-          await logToSheet('hot', senderId, phone, messageText);
+          await logToSheet('hot', plainLabel(senderId), phone, messageText);
 
           await notifyTelegram(
             `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
@@ -378,18 +383,16 @@ if (!senderId || !messageText) continue;
           );
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
-          await logToSheet('follow-up', senderId, '', messageText);
+          await logToSheet('follow-up', plainLabel(senderId), '', messageText);
           await notifyTelegram(
             `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
             `To pause AI: <code>/mute ${senderId}</code>`
           );
         } else {
           dailyStats.casualCount++;
-          await logToSheet('casual', senderId, '', messageText);
-          await notifyTelegram(
-            `💬 <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
-            `To pause AI: <code>/mute ${senderId}</code>`
-          );
+          // Logged to the sheet for your records, but no Telegram ping -
+          // casual chats don't need immediate attention.
+          await logToSheet('casual', plainLabel(senderId), '', messageText);
         }
       }
     }
