@@ -16,9 +16,64 @@ const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const SHEET_WEBAPP_URL = process.env.SHEET_WEBAPP_URL;
+const SHEET_SECRET = process.env.SHEET_SECRET;
+
+async function logToSheet(type, sender, phone, message) {
+  if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
+  try {
+    await fetch(SHEET_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: SHEET_SECRET,
+        type,
+        sender,
+        phone: phone || '',
+        message: message || '',
+      }),
+      redirect: 'follow',
+    });
+  } catch (err) {
+    console.error('❌ Failed to log to Sheet:', err.message);
+  }
+}
 
 const seenSenders = new Set();
 const optedOut = new Set();
+const senderNames = new Map(); // senderId -> username (best effort, may stay unresolved)
+const recentConversations = new Map(); // senderId -> { lastMessage, lastSeen }
+const MAX_RECENT = 20;
+
+async function lookupUsername(senderId) {
+  if (senderNames.has(senderId)) return senderNames.get(senderId);
+  try {
+    const res = await fetch(
+      `https://graph.instagram.com/v21.0/${senderId}?fields=username,name&access_token=${IG_ACCESS_TOKEN}`
+    );
+    const data = await res.json();
+    const label = data.username || data.name || null;
+    senderNames.set(senderId, label); // cache even if null, avoid repeat failed lookups
+    return label;
+  } catch (err) {
+    senderNames.set(senderId, null);
+    return null;
+  }
+}
+
+function identifyLabel(senderId) {
+  const name = senderNames.get(senderId);
+  return name ? `@${name} (<code>${senderId}</code>)` : `<code>${senderId}</code>`;
+}
+
+function trackConversation(senderId, messageText) {
+  recentConversations.set(senderId, { lastMessage: messageText, lastSeen: new Date() });
+  // Keep only the most recent MAX_RECENT conversations, oldest dropped.
+  if (recentConversations.size > MAX_RECENT) {
+    const oldestKey = recentConversations.keys().next().value;
+    recentConversations.delete(oldestKey);
+  }
+}
 
 // In-Memory Daily Analytics (Resets at midnight or via /reset)
 let dailyStats = {
@@ -244,24 +299,17 @@ app.post('/webhook', async (req, res) => {
         const messageText = event.message?.text;
         const isEcho = event.message?.is_echo === true;
 
-// --- ACCURATE HUMAN TAKEOVER LOGIC ---
+// --- HUMAN TAKEOVER (DISABLED - see note below) ---
+// This used to auto-mute based on echoes missing an app_id, assuming that meant
+// a human typed the reply manually. In practice this triggered even when the BOT's
+// own replies were echoed back, meaning it was silently muting real customers right
+// after every auto-reply - the opposite of what we want. Disabled until we can
+// confirm Meta's exact echo payload shape. Use the manual /mute command instead,
+// which is reliable.
 if (isEcho) {
-  const recipientId = event.recipient?.id;
-  const appId = event.message?.app_id;
-
-  // If there is NO app_id (or app_id doesn't match our API calls), 
-  // it means a REAL HUMAN typed this reply inside Instagram / Meta Business Suite!
-  if (recipientId && !appId) {
-    optedOut.add(recipientId); // Mute AI for this specific client
-    console.log(`👤 REAL HUMAN TAKEOVER detected for user ${recipientId}. AI muted!`);
-    
-    await notifyTelegram(
-      `👤 <b>Human Takeover Active</b>\n` +
-      `AI has been automatically paused for client <code>${recipientId}</code> because a human team member replied in Instagram/Meta Suite.`
-    );
-  }
-  continue; // Ignore echo processing
-}        if (!senderId || !messageText) continue;
+  continue; // just ignore echoes, don't auto-mute anyone based on them
+}
+if (!senderId || !messageText) continue;
 
         console.log(`📩 DM from ${senderId}: ${messageText}`);
 
@@ -300,6 +348,10 @@ if (isEcho) {
         const isFirstContact = !seenSenders.has(senderId);
         seenSenders.add(senderId);
 
+        if (isFirstContact) await lookupUsername(senderId); // best effort, cached after
+        trackConversation(senderId, messageText);
+        const label = identifyLabel(senderId);
+
         const generated = await generateReply(messageText);
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
@@ -314,18 +366,30 @@ if (isEcho) {
         if (phoneMatch) {
           const phone = phoneMatch[0];
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
-          
+          await logToSheet('hot', senderId, phone, messageText);
+
           await notifyTelegram(
             `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
             `<b>Phone:</b> <code>${phone}</code>\n` +
-            `<b>User ID:</b> <code>${senderId}</code>\n` +
+            `<b>From:</b> ${label}\n` +
             `<b>Message:</b> "${messageText}"\n\n` +
-            `⚡ <i>Call or WhatsApp them right now!</i>`
+            `⚡ <i>Call or WhatsApp them right now!</i>\n` +
+            `To pause AI for this person: <code>/mute ${senderId}</code>`
           );
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
+          await logToSheet('follow-up', senderId, '', messageText);
+          await notifyTelegram(
+            `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
+            `To pause AI: <code>/mute ${senderId}</code>`
+          );
         } else {
           dailyStats.casualCount++;
+          await logToSheet('casual', senderId, '', messageText);
+          await notifyTelegram(
+            `💬 <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
+            `To pause AI: <code>/mute ${senderId}</code>`
+          );
         }
       }
     }
@@ -376,6 +440,19 @@ app.post('/telegram-webhook', async (req, res) => {
       } else {
         optedOut.delete(senderId);
         await notifyTelegram(`🔊 AI re-enabled for <code>${senderId}</code>.`);
+      }
+    } else if (text === '/active' || text === 'active') {
+      if (recentConversations.size === 0) {
+        await notifyTelegram('No recent conversations yet.');
+      } else {
+        const lines = [...recentConversations.entries()]
+          .reverse() // most recent first
+          .map(([id, info]) => {
+            const label = identifyLabel(id);
+            const muted = optedOut.has(id) ? ' 🔇 MUTED' : '';
+            return `${label}${muted}\n   "${info.lastMessage.slice(0, 60)}"\n   <code>/mute ${id}</code>`;
+          });
+        await notifyTelegram(`💬 <b>Recent conversations</b>\n\n${lines.join('\n\n')}`);
       }
     }
   } catch (err) {
