@@ -41,6 +41,18 @@ async function logToSheet(type, sender, phone, message) {
 
 const seenSenders = new Set();
 const optedOut = new Set();
+const autoMuteUntil = new Map(); // senderId -> timestamp; auto-expires unlike manual /mute
+const AUTO_MUTE_DURATION_MS = 45 * 60 * 1000; // 45 min - adjust here if you want 30-60 range
+
+function isAutoMuted(senderId) {
+  const until = autoMuteUntil.get(senderId);
+  if (!until) return false;
+  if (Date.now() > until) {
+    autoMuteUntil.delete(senderId); // window passed, auto-resume
+    return false;
+  }
+  return true;
+}
 const senderNames = new Map(); // senderId -> username (best effort, may stay unresolved)
 const recentConversations = new Map(); // senderId -> { lastMessage, lastSeen }
 const MAX_RECENT = 20;
@@ -344,9 +356,13 @@ if (!senderId || !messageText) continue;
           continue;
         }
 
-        // 3. IF MUTED, SKIP
+        // 3. IF MUTED (manual) OR IN AUTO-MUTE WINDOW, SKIP
         if (optedOut.has(senderId)) {
           console.log(`Skipping reply — ${senderId} is muted / opted out.`);
+          continue;
+        }
+        if (isAutoMuted(senderId)) {
+          console.log(`Skipping reply — ${senderId} is in the auto-pause window after sharing a phone number.`);
           continue;
         }
 
@@ -373,13 +389,18 @@ if (!senderId || !messageText) continue;
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
           await logToSheet('hot', plainLabel(senderId), phone, messageText);
 
+          // Pause AI for this person so it doesn't double-message while your
+          // team follows up. Auto-resumes after the window if nobody manually
+          // takes over with /mute.
+          autoMuteUntil.set(senderId, Date.now() + AUTO_MUTE_DURATION_MS);
+
           await notifyTelegram(
             `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
             `<b>Phone:</b> <code>${phone}</code>\n` +
             `<b>From:</b> ${label}\n` +
             `<b>Message:</b> "${messageText}"\n\n` +
             `⚡ <i>Call or WhatsApp them right now!</i>\n` +
-            `To pause AI for this person: <code>/mute ${senderId}</code>`
+            `AI is auto-paused for this chat for 45 min. To hold longer: <code>/mute ${senderId}</code>`
           );
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
@@ -442,6 +463,7 @@ app.post('/telegram-webhook', async (req, res) => {
         await notifyTelegram(`⚠️ Usage: <code>/unmute SENDER_ID</code>`);
       } else {
         optedOut.delete(senderId);
+        autoMuteUntil.delete(senderId);
         await notifyTelegram(`🔊 AI re-enabled for <code>${senderId}</code>.`);
       }
     } else if (text === '/active' || text === 'active') {
@@ -452,8 +474,13 @@ app.post('/telegram-webhook', async (req, res) => {
           .reverse() // most recent first
           .map(([id, info]) => {
             const label = identifyLabel(id);
-            const muted = optedOut.has(id) ? ' 🔇 MUTED' : '';
-            return `${label}${muted}\n   "${info.lastMessage.slice(0, 60)}"\n   <code>/mute ${id}</code>`;
+            let status = '';
+            if (optedOut.has(id)) status = ' 🔇 MUTED';
+            else if (isAutoMuted(id)) {
+              const minsLeft = Math.ceil((autoMuteUntil.get(id) - Date.now()) / 60000);
+              status = ` ⏸️ auto-paused (${minsLeft}m left)`;
+            }
+            return `${label}${status}\n   "${info.lastMessage.slice(0, 60)}"\n   <code>/mute ${id}</code>`;
           });
         await notifyTelegram(`💬 <b>Recent conversations</b>\n\n${lines.join('\n\n')}`);
       }
