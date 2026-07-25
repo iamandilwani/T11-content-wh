@@ -41,6 +41,9 @@ async function logToSheet(type, sender, phone, message) {
 
 const seenSenders = new Set();
 const optedOut = new Set();
+const loggedHotToSheet = new Set(); // avoid duplicate sheet rows for the same hot lead
+const loggedFollowUpToSheet = new Set(); // same, for follow-up leads
+const askedForWhatsApp = new Set(); // tracks who we've already asked, since Gemini has no memory of prior turns
 const autoMuteUntil = new Map(); // senderId -> timestamp; auto-expires unlike manual /mute
 const AUTO_MUTE_DURATION_MS = 45 * 60 * 1000; // 45 min - adjust here if you want 30-60 range
 
@@ -75,7 +78,9 @@ async function lookupUsername(senderId) {
 
 function identifyLabel(senderId) {
   const name = senderNames.get(senderId);
-  return name ? `@${name} (<code>${senderId}</code>)` : `<code>${senderId}</code>`;
+  return name
+    ? `<a href="https://instagram.com/${name}">@${name}</a> (<code>${senderId}</code>)`
+    : `<code>${senderId}</code>`;
 }
 
 function plainLabel(senderId) {
@@ -99,6 +104,7 @@ let dailyStats = {
   followUpLeads: [], // { senderId, text }
   casualCount: 0
 };
+let uniqueUsersToday = new Set(); // tracks distinct people, since totalInquiries counts every message
 
 const OPT_OUT_WORDS = ['stop', 'unsubscribe', 'opt out', 'opt-out'];
 const UNMUTE_WORDS = ['start', 'unmute', 'activate'];
@@ -193,23 +199,37 @@ CONVERSATION LOGIC:
 2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation):
    - Highlight that slots are strictly limited and invite-only to keep squad vibes right.
    - Give duration, dates, and direct link.
-   - Call to Action: Direct them to click "Request Invite" on the website link or drop their WhatsApp number right here so our team can review their request!
+   - Call to Action: Direct them to click "Request Invite" on the website link. Only ALSO ask for
+     their WhatsApp number if they show real intent to move forward (e.g. "how do I book", "I'm
+     interested", "sounds good") - not on a first general question like "what trips do you have?"
 3. CUSTOMIZED TRIPS / OTHER LOCATIONS (e.g., Kashmir, Spiti, Bali, Europe):
    - Enthusiastically confirm we curate custom offbeat journeys for any location.
-   - Ask for their travel dates, group size, and WhatsApp number so our travel architect can extend an invitation/quote.
+   - Ask for their travel dates and group size. Only ask for WhatsApp too if they seem ready to move
+     forward, not on a first curious question.
 4. SAFETY, GROUP SIZE & WEATHER QUESTIONS:
    - Safety for Girls/Solo Travelers: Reassure warmly! Over 50% of our community members are solo women. Our invite-only vetting ensures a safe, respectful squad, led by experienced ground captains.
    - Group Size: Explain that we run micro-groups (6-15 people for group trips, 5-7 for workations) to maintain real community vibes rather than commercial tourist buses.
-   - Weather/Road Conditions: Reassure that departures are scheduled during safe seasons and monitored daily by ground teams. Invite them to drop their WhatsApp or text +91 94859 86981 for live updates.
+   - Weather/Road Conditions: Reassure that departures are scheduled during safe seasons and monitored daily by ground teams.
+   - These are reassurance questions - just answer them warmly. Do NOT ask for a WhatsApp number here,
+     that feels pushy when someone is just asking if it's safe.
 5. URGENT BOOKINGS: Share official WhatsApp (+91 94859 86981).
+
+WHATSAPP NUMBER - CRITICAL RULE:
+- Ask for it AT MOST ONCE per conversation. If you already asked earlier in this chat and they
+  haven't given it, do not ask again - just keep answering their questions normally.
+- Never ask for it in response to a general question, a reassurance question, or small talk. Only
+  ask when they've shown real intent to move forward with a booking.
 
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
 `.trim();
 
-async function generateReply(messageText) {
+async function generateReply(messageText, alreadyAskedForWhatsApp) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
+    const contextNote = alreadyAskedForWhatsApp
+      ? '\n\nIMPORTANT CONTEXT: You have already asked this person for their WhatsApp number earlier in this conversation. Do NOT ask again - just answer their message normally.'
+      : '';
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -218,7 +238,7 @@ async function generateReply(messageText) {
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: `${SYSTEM_PROMPT}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }],
+              parts: [{ text: `${SYSTEM_PROMPT}${contextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }],
             },
           ],
           generationConfig: {
@@ -284,7 +304,8 @@ function generateReportText(title = "LIVE LEAD REPORT") {
   return `
 📊 <b>${title} — Travel Eleven</b>
 --------------------------------------------
-📥 <b>Total Inquiries Today:</b> ${dailyStats.totalInquiries}
+👥 <b>Unique People Contacted:</b> ${uniqueUsersToday.size}
+📥 <b>Total Messages Received:</b> ${dailyStats.totalInquiries}
 🔥 <b>Hot Leads (Phone Numbers):</b> ${dailyStats.hotLeads.length}
 ⏳ <b>Follow-up Needed:</b> ${dailyStats.followUpLeads.length}
 💬 <b>Casual Conversations:</b> ${dailyStats.casualCount}
@@ -383,12 +404,14 @@ if (!senderId || !messageText) continue;
         trackConversation(senderId, messageText);
         const label = identifyLabel(senderId);
 
-        const generated = await generateReply(messageText);
+        const generated = await generateReply(messageText, askedForWhatsApp.has(senderId));
+        if (/whatsapp/i.test(generated)) askedForWhatsApp.add(senderId);
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
 
         // --- LEAD CATEGORIZATION ---
         dailyStats.totalInquiries++;
+        uniqueUsersToday.add(senderId);
 
         const phoneMatch = messageText.match(/\b[6-9]\d{9}\b/);
         const highIntentKeywords = ['price', 'cost', 'dates', 'book', 'how to join', 'itinerary', 'safe', 'workation', 'yulla', 'gumbok'];
@@ -397,7 +420,11 @@ if (!senderId || !messageText) continue;
         if (phoneMatch) {
           const phone = phoneMatch[0];
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
-          await logToSheet('hot', plainLabel(senderId), phone, messageText);
+
+          if (!loggedHotToSheet.has(senderId)) {
+            loggedHotToSheet.add(senderId);
+            await logToSheet('hot', plainLabel(senderId), phone, messageText);
+          }
 
           // Pause AI for this person so it doesn't double-message while your
           // team follows up. Auto-resumes after the window if nobody manually
@@ -414,16 +441,20 @@ if (!senderId || !messageText) continue;
           );
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
-          await logToSheet('follow-up', plainLabel(senderId), '', messageText);
+
+          if (!loggedFollowUpToSheet.has(senderId)) {
+            loggedFollowUpToSheet.add(senderId);
+            await logToSheet('follow-up', plainLabel(senderId), '', messageText);
+          }
+
           await notifyTelegram(
             `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
             `To pause AI: <code>/mute ${senderId}</code>`
           );
         } else {
           dailyStats.casualCount++;
-          // Logged to the sheet for your records, but no Telegram ping -
-          // casual chats don't need immediate attention.
-          await logToSheet('casual', plainLabel(senderId), '', messageText);
+          // Casual chats aren't logged to the sheet or pinged to Telegram -
+          // only hot leads and genuine follow-up interest are.
         }
       }
     }
@@ -458,6 +489,7 @@ app.post('/telegram-webhook', async (req, res) => {
       await notifyTelegram(`🔥 <b>HOT LEADS TODAY (${dailyStats.hotLeads.length})</b>\n\n${hotText}`);
     } else if (text === '/reset' || text === 'reset') {
       dailyStats = { totalInquiries: 0, hotLeads: [], followUpLeads: [], casualCount: 0 };
+      uniqueUsersToday = new Set();
       await notifyTelegram(`🔄 <b>Daily lead stats have been reset!</b>`);
     } else if (text.startsWith('/mute')) {
       const senderId = text.split(/\s+/)[1];
@@ -512,6 +544,7 @@ cron.schedule('0 21 * * *', async () => {
     followUpLeads: [],
     casualCount: 0
   };
+  uniqueUsersToday = new Set();
 }, {
   scheduled: true,
   timezone: "Asia/Kolkata"
