@@ -19,7 +19,31 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SHEET_WEBAPP_URL = process.env.SHEET_WEBAPP_URL;
 const SHEET_SECRET = process.env.SHEET_SECRET;
 
-async function logToSheet(type, sender, phone, message) {
+async function persistMute(senderId, action) {
+  if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
+  try {
+    await fetch(SHEET_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ secret: SHEET_SECRET, action, senderId }),
+      redirect: 'follow',
+    });
+  } catch (err) {
+    console.error('❌ Failed to persist mute to sheet:', err.message);
+  }
+}
+
+async function loadMutedFromSheet() {
+  if (!SHEET_WEBAPP_URL) return;
+  try {
+    const res = await fetch(`${SHEET_WEBAPP_URL}?listMuted=1`, { redirect: 'follow' });
+    const data = await res.json();
+    (data.muted || []).forEach((id) => optedOut.add(id));
+    console.log(`✅ Restored ${(data.muted || []).length} muted user(s) from sheet after restart.`);
+  } catch (err) {
+    console.error('❌ Failed to load muted list from sheet:', err.message);
+  }
+}
   if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
   try {
     await fetch(SHEET_WEBAPP_URL, {
@@ -497,7 +521,8 @@ app.post('/telegram-webhook', async (req, res) => {
         await notifyTelegram(`⚠️ Usage: <code>/mute SENDER_ID</code>\n(Find the sender ID in any lead notification above.)`);
       } else {
         optedOut.add(senderId);
-        await notifyTelegram(`🔇 AI manually muted for <code>${senderId}</code>. It will not auto-reply to this person until you send <code>/unmute ${senderId}</code>.`);
+        await persistMute(senderId, 'mute');
+        await notifyTelegram(`🔇 AI permanently muted for <code>${senderId}</code> (survives server restarts). Send <code>/unmute ${senderId}</code> to re-enable.`);
       }
     } else if (text.startsWith('/unmute')) {
       const senderId = text.split(/\s+/)[1];
@@ -506,6 +531,7 @@ app.post('/telegram-webhook', async (req, res) => {
       } else {
         optedOut.delete(senderId);
         autoMuteUntil.delete(senderId);
+        await persistMute(senderId, 'unmute');
         await notifyTelegram(`🔊 AI re-enabled for <code>${senderId}</code>.`);
       }
     } else if (text === '/active' || text === 'active') {
@@ -568,4 +594,7 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Webhook server listening on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Webhook server listening on port ${PORT}`);
+  loadMutedFromSheet(); // restore permanent mutes that survived a restart
+});
