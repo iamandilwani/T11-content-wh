@@ -44,6 +44,8 @@ async function loadMutedFromSheet() {
     console.error('❌ Failed to load muted list from sheet:', err.message);
   }
 }
+
+async function logToSheet(type, sender, phone, message) {
   if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
   try {
     await fetch(SHEET_WEBAPP_URL, {
