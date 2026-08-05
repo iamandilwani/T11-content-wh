@@ -176,7 +176,7 @@ const TRAVEL_ELEVEN_DATA = {
       price: "₹8,999/-",
       dates: [
         { label: "27 Aug '26", status: "Available" },
-        { label: "02 Sep '26 (Janmashtami Special)", status: "Available" },
+        { label: "02 Sep '26 (Janmashtami Special)", status: "Not Available - operational issues due to heavy rush" },
         { label: "17 Sep '26", status: "Available" },
         { label: "24 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" },
@@ -194,7 +194,7 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Unstructured, slow-paced workation for remote workers & creators in a traditional insulated mud house with reliable Wi-Fi.",
       price: "₹11,999/-",
       dates: [
-        { label: "30 July '26", status: "Available" }
+        { label: "30 July '26", status: "Batch already departed - next batch dates coming soon" }
       ],
       link: "https://traveleleven.in/itinerary.html?trip=workation"
     }
@@ -239,6 +239,13 @@ CONVERSATION LOGIC:
    - These are reassurance questions - just answer them warmly. Do NOT ask for a WhatsApp number here,
      that feels pushy when someone is just asking if it's safe.
 5. URGENT BOOKINGS: Share official WhatsApp (+91 94859 86981).
+
+DATE AVAILABILITY - IMPORTANT:
+- Check the "status" field for each date in the knowledge base before answering. If it's not exactly
+  "Available", do NOT say the batch is open - explain warmly using the reason given (e.g. departed
+  already, operational issues, heavy rush), and redirect them: offer another available date for the
+  same trip if one exists, or say you'll keep them posted on the next batch.
+- Never imply a full/departed/cancelled batch can still be joined.
 
 WHATSAPP NUMBER - CRITICAL RULE:
 - Ask for it AT MOST ONCE per conversation. If you already asked earlier in this chat and they
