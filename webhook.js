@@ -70,6 +70,21 @@ const optedOut = new Set();
 const loggedHotToSheet = new Set(); // avoid duplicate sheet rows for the same hot lead
 const loggedFollowUpToSheet = new Set(); // same, for follow-up leads
 const askedForWhatsApp = new Set(); // tracks who we've already asked, since Gemini has no memory of prior turns
+const conversationHistory = new Map(); // senderId -> array of {role, parts} turns for real multi-turn context
+const MAX_HISTORY_TURNS = 10; // 5 exchanges - keeps prompt size/cost reasonable while still giving real context
+
+function getHistory(senderId) {
+  return conversationHistory.get(senderId) || [];
+}
+
+function appendToHistory(senderId, userText, modelText) {
+  const history = getHistory(senderId);
+  history.push({ role: 'user', parts: [{ text: userText }] });
+  history.push({ role: 'model', parts: [{ text: modelText }] });
+  // Keep only the most recent turns so the prompt doesn't grow unbounded.
+  const trimmed = history.slice(-MAX_HISTORY_TURNS);
+  conversationHistory.set(senderId, trimmed);
+}
 const autoMuteUntil = new Map(); // senderId -> timestamp; auto-expires unlike manual /mute
 const AUTO_MUTE_DURATION_MS = 45 * 60 * 1000; // 45 min - adjust here if you want 30-60 range
 
@@ -176,7 +191,7 @@ const TRAVEL_ELEVEN_DATA = {
       price: "₹8,999/-",
       dates: [
         { label: "27 Aug '26", status: "Available" },
-        { label: "02 Sep '26 (Janmashtami Special)", status: "Not Available - operational issues due to heavy rush" },
+        { label: "02 Sep '26 (Janmashtami Special)", status: "Discontinued - heavy rush and operational issues, don't want to compromise the experience" },
         { label: "17 Sep '26", status: "Available" },
         { label: "24 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" },
@@ -210,15 +225,16 @@ BRAND CONCEPT:
 - Tone: Offbeat, curated, real, exclusive yet warm, and casual (Indian English friendly).
 - Length: Keep replies under 2-3 short sentences max. This is an Instagram DM!
 
-FORMATTING - THIS IS CRITICAL:
-- NEVER write one dense paragraph. Real people texting break their thoughts into short separate
-  lines using actual line breaks (\n), not one run-on sentence with commas.
-- If mentioning more than one trip/option, put EACH one on its own line, not comma-separated in
-  a sentence. Example of BAD formatting (never do this):
-  "We have two amazing trips: Gumbok Rangan and Yulla Kanda, plus a Workation."
-  Example of GOOD formatting (always do this):
-  "Hey! ✨\nWe've got a few offbeat trips coming up:\n🏔️ Gumbok Rangan (Zanskar)\n🙏 Yulla Kanda Trek\n💻 Himachal Workation\n\nWant details on any of these?"
-- Keep each line short - if a line feels like it's doing too much, break it into two lines instead.
+FORMATTING & TONE - THIS IS CRITICAL:
+- Talk like a real person texting back, not a brochure. Keep replies SHORT - often just 1 line, rarely
+  more than 2-3. Don't explain the whole brand/community concept every time someone says hi - save full
+  explanations for when they actually ask for details.
+- NEVER write one dense paragraph. If you do need more than one line, break it with actual line breaks
+  (\n), one idea per line - never comma-separated run-on sentences.
+- Use the conversation history you're given. If they already asked about a specific trip, stay on that
+  trip unless they clearly switch topics - don't re-introduce yourself or re-explain things you already
+  said earlier in this same conversation.
+- Casual Indian-English texting tone, light emoji use, contractions are fine ("rn", "tbh" etc where natural).
 
 CONVERSATION LOGIC:
 1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on the experience, dates, and exclusivity.
@@ -257,25 +273,31 @@ KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
 `.trim();
 
-async function generateReply(messageText, alreadyAskedForWhatsApp) {
+async function generateReply(messageText, history, alreadyAskedForWhatsApp) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
   try {
-    const contextNote = alreadyAskedForWhatsApp
-      ? '\n\nIMPORTANT CONTEXT: You have already asked this person for their WhatsApp number earlier in this conversation. Do NOT ask again - just answer their message normally.'
-      : '';
+    const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const contextNote =
+      `\n\nToday's date is ${todayStr}. Any listed trip date before today has already passed - never offer` +
+      ` a past date as bookable, even if its status still says "Available". If asked about a past date` +
+      ` specifically, say it's already gone and point them to the next upcoming date for that trip instead.` +
+      (alreadyAskedForWhatsApp
+        ? '\n\nYou have already asked this person for their WhatsApp number earlier in this conversation. Do NOT ask again - just answer normally.'
+        : '');
+
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT + contextNote }] },
           contents: [
-            {
-              parts: [{ text: `${SYSTEM_PROMPT}${contextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }],
-            },
+            ...(history || []),
+            { role: 'user', parts: [{ text: messageText }] },
           ],
           generationConfig: {
-            temperature: 0.3
+            temperature: 0.4
           }
         }),
       }
@@ -437,7 +459,8 @@ if (!senderId || !messageText) continue;
         trackConversation(senderId, messageText);
         const label = identifyLabel(senderId);
 
-        const generated = await generateReply(messageText, askedForWhatsApp.has(senderId));
+        const generated = await generateReply(messageText, getHistory(senderId), askedForWhatsApp.has(senderId));
+        appendToHistory(senderId, messageText, generated);
         if (/whatsapp/i.test(generated)) askedForWhatsApp.add(senderId);
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
@@ -447,8 +470,10 @@ if (!senderId || !messageText) continue;
         uniqueUsersToday.add(senderId);
 
         const phoneMatch = messageText.match(/\b[6-9]\d{9}\b/);
-        const highIntentKeywords = ['price', 'cost', 'dates', 'book', 'how to join', 'itinerary', 'safe', 'workation', 'yulla', 'gumbok'];
-        const isHighIntent = highIntentKeywords.some(kw => lowerMsg.includes(kw));
+        const topicKeywords = ['price', 'cost', 'dates', 'book', 'how to join', 'itinerary', 'safe', 'workation', 'yulla', 'gumbok'];
+        const strongInterestKeywords = ['interested', 'count me in', 'want to join', 'sign me up', "let's do this", 'i want to book', 'ready to book'];
+        const isHighIntent = topicKeywords.some(kw => lowerMsg.includes(kw));
+        const isStronglyInterested = strongInterestKeywords.some(kw => lowerMsg.includes(kw));
 
         if (phoneMatch) {
           const phone = phoneMatch[0];
@@ -471,6 +496,19 @@ if (!senderId || !messageText) continue;
             `<b>Message:</b> "${messageText}"\n\n` +
             `⚡ <i>Call or WhatsApp them right now!</i>\n` +
             `AI is auto-paused for this chat for 45 min. To hold longer: <code>/mute ${senderId}</code>`
+          );
+        } else if (isStronglyInterested) {
+          dailyStats.followUpLeads.push({ senderId, text: messageText });
+
+          if (!loggedFollowUpToSheet.has(senderId)) {
+            loggedFollowUpToSheet.add(senderId);
+            await logToSheet('strongly-interested', plainLabel(senderId), '', messageText);
+          }
+
+          await notifyTelegram(
+            `🌟 <b>HIGHLY INTERESTED LEAD!</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n\n` +
+            `<i>They're showing real intent but haven't shared a phone number yet - worth a personal nudge.</i>\n` +
+            `To pause AI: <code>/mute ${senderId}</code>`
           );
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
