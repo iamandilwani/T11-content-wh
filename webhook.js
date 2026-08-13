@@ -161,17 +161,70 @@ const TRAVEL_ELEVEN_DATA = {
     name: "Travel Eleven",
     tagline: "Turning your 11:11 wishes into journeys.",
     descriptor: "Offbeat. Curated. Real.",
-    whatsapp: "+91 94859 86981"
+    specialization: "Boutique offbeat group expeditions, spiritual Himalayan treks, cultural immersion, and slow workations.",
+    website: "https://traveleleven.in",
+    whatsapp: "+91 94859 86981",
+    email: "info@traveleleven.in",
+    instagram: "@traveleleven.in",
+    baseLocation: "Gurugram, Haryana, India",
+    departurePoint: "Delhi ISBT / Central Delhi (for most Himalayan trips)",
+    groupSizePolicy: "Small-group policy: 6 to 15 travelers maximum per departure"
+  },
+  policies: {
+    advancePayment: "40% advance to confirm seat; balance payable before departure.",
+    cancellation: {
+      "15+ days before departure": "100% refund (minus nominal processing fee)",
+      "7-15 days before departure": "50% refund",
+      "less than 7 days before departure": "No refund (0%)"
+    },
+    weatherPolicy: "If Travel Eleven cancels a trip due to severe weather, roadblocks, or landslides, travelers receive a 100% refund or full credit voucher for future trips.",
+    luggagePolicy: "Strict no-trolley bag rule for treks - use rucksacks/duffel bags only."
   },
   group_departures: [
     {
       id: "gumbok",
       name: "Gumbok Rangan with Jispa",
-      location: "Zanskar, India",
+      location: "Zanskar Valley & Jispa, Ladakh / Himachal Pradesh, India",
+      altitude: "16,500+ ft (Shinkula Pass)",
       duration: "4D/3N",
+      difficulty: "Easy (scenic high-altitude road journey with light walking)",
       groupSize: "6-15",
+      bestSeason: "May to October",
+      network: "No network beyond Keylong - postpaid Jio/Airtel works occasionally in spots; satellite phones in villages for emergencies",
+      healthAdvisory: "Not recommended for individuals with severe asthmatic conditions or acute high-altitude medical issues.",
       tags: ["Stargazing", "Remote Valley"],
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
+      about: "A rare high-altitude road expedition via the newly opened Shinkula Pass route into Zanskar Valley to stand at the base of Gonbo Rangjon (the sacred 'God of Mountains'). Explores isolated Tibetan-Buddhist villages and cliffside monasteries like Phuktal.",
+      highlights: [
+        "God of Mountains (Gonbo Rangjon): base camp experience under the massive 5,000m monolith rock peak in Kargyak Valley",
+        "Shinkula Pass Crossing: cross the 16,580 ft high pass connecting Lahaul and Zanskar",
+        "Dark Sky Stargazing: Milky Way vistas under zero light pollution",
+        "Remote Zanskari Culture: authentic homestay experience in Kargyak village",
+        "Phuktal Monastery Trek: hike to the cliffside monastery built directly inside a limestone cave",
+        "Atal Tunnel & Jispa River Camps: cross Atal Tunnel into Lahaul & camp along Bhaga river in Jispa"
+      ],
+      itinerary: [
+        "Day 0: Departure from Delhi (7 PM pickup), overnight scenic drive toward Manali via Chandigarh",
+        "Day 1: Delhi to Jispa - drive through Atal Tunnel into Lahaul Valley via Sissu & Keylong, check into Jispa camps, evening acclimatization walk by Bhaga River",
+        "Day 2: Jispa to Kargyak - cross Shinkula Pass (16,500+ ft), view Gumbok Rangan monolith, descend into Kargyak Valley, traditional Zanskari homestay/camps, night stargazing",
+        "Day 3: Phuktal Monastery & Zanskar Villages - morning hike (40-45 min) along Tsarap river canyon to the cave monastery, interact with monks, return to Kargyak",
+        "Day 4: Kargyak to Manali - drive back across Shinkula Pass, free time at Manali Mall Road, board overnight vehicle to Delhi",
+        "Day 5: Arrival in Delhi by 8 AM"
+      ],
+      inclusions: [
+        "Delhi to Delhi comfortable push-back traveller / Volvo bus transport",
+        "2 nights campsite/village homestay in Zanskar + 1 night in Jispa",
+        "Breakfast & Dinner as per itinerary",
+        "Experienced Trip Captain & local Himachali/Zanskari support",
+        "Portable medical oxygen cylinders & first-aid support",
+        "Evening bonfire (weather permitting)"
+      ],
+      exclusions: [
+        "5% GST",
+        "Personal snacks, shopping, mobile data/sat-phone charges",
+        "Insurance, entry permits, porter charges",
+        "Unforeseen delays due to weather, landslides, or road closure"
+      ],
       price: "₹11,999/-",
       dates: [
         { label: "13 Aug '26", status: "Available" },
@@ -183,11 +236,56 @@ const TRAVEL_ELEVEN_DATA = {
     {
       id: "yulla",
       name: "Yulla Kanda Trek",
-      location: "Himachal Pradesh",
+      fullName: "Yulla Kanda - World's Highest Krishna Temple",
+      location: "Kinnaur Valley, Himachal Pradesh, India",
+      altitude: "12,000+ ft",
+      trekDistance: "24 KM total (6 KM day 1, 12 KM day 2, 6 KM day 3)",
       duration: "3D/2N",
+      difficulty: "Moderate (suitable for beginners with basic fitness)",
       groupSize: "6-15",
+      bestSeason: "June to September (also April-October season windows)",
+      network: "Limited / minimal coverage beyond base village",
       tags: ["World's Highest Krishna Temple", "Trek"],
       description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
+      about: "Yulla Kanda is home to the world's highest Krishna temple, sitting peacefully at over 12,000 ft in the spectacular Kinnaur Valley of Himachal Pradesh. This spiritual trek leads through untouched alpine meadows, cozy villages, and dense pine forests, culminating at a sacred glacial lake containing the Krishna temple.",
+      highlights: [
+        "World's Highest Krishna Temple: sacred temple inside a pristine high-altitude glacial lake at 12,000+ ft",
+        "Ancient Forest Trails: walk through untouched Himalayan forests surrounded by majestic deodar trees",
+        "Authentic Village Stay: genuine Kinnauri hospitality in cozy traditional wooden homestays",
+        "Starry Nights: crystal-clear Himalayan night skies perfect for stargazing",
+        "Panoramic Views: breathtaking Himalayan landscapes and snow-capped Kinnaur Kailash peaks",
+        "Small Group Tribe: boutique experience with like-minded offbeat explorers"
+      ],
+      itinerary: [
+        "Day 0: Departure from Delhi (7 PM), overnight drive through Chandigarh & Shimla toward Kinnaur gateway",
+        "Day 1: Reach Yulla Khas & trek to forest homestay - 6 KM trek, home-cooked dinner around a bonfire",
+        "Day 2: The Holy Yulla Kanda Summit - early hike through alpine meadows to the temple at 12,000+ ft, packed lunch, descend to forest homestay for bonfire night (12 KM round trip)",
+        "Day 3: Descend to base & return drive - 6 KM descent to Yulla Khas, overnight return journey to Delhi",
+        "Day 4: Arrival in Delhi before 8 AM"
+      ],
+      inclusions: [
+        "Tempo Traveller transport from Delhi to Yulla Khas and back",
+        "Cozy local wooden homestay accommodation (2 nights)",
+        "3 Breakfasts, 1 Packed Lunch, 2 Dinners (basic homely local food)",
+        "Experienced Trip Host and Trek Leader assistance",
+        "Warm bonfire setup and community activities",
+        "Basic first-aid and medical oxygen canisters support"
+      ],
+      exclusions: [
+        "5% GST / taxes",
+        "Extra meals, snacks, or personal beverages not in inclusions",
+        "Personal expenses, shopping, porter charges for personal luggage",
+        "Travel or medical insurance",
+        "Entry fees, permits, or expenses from roadblocks/landslides/unpredictable weather"
+      ],
+      thingsToCarry: [
+        "Rucksack & small daypack (no trolley bags allowed)",
+        "High-traction trekking or outdoor shoes",
+        "Thermal innerwear, heavy fleece/down jacket, rain poncho/raincoat",
+        "Reusable insulated water bottle (mandatory zero-plastic rule)",
+        "Flashlight/headlamp, personal medication, ORS, energy snacks",
+        "Warm woolen cap, gloves, neck gaiter, power bank"
+      ],
       price: "₹8,999/-",
       dates: [
         { label: "27 Aug '26", status: "Available" },
@@ -202,11 +300,51 @@ const TRAVEL_ELEVEN_DATA = {
     {
       id: "workation",
       name: "Hidden Himachal Workation",
-      location: "Himachal Pradesh",
+      fullName: "Hidden Himachal - Mountain Escape & Workation",
+      location: "Himachal Pradesh, India",
+      durationOptions: [
+        "3-Day Weekend Getaway (3D/2N) - ₹8,999/-",
+        "7-Day Slow Workation (7D/6N) - ₹17,999/-"
+      ],
+      difficulty: "Easy to Moderate",
       duration: "3D / 7D",
       groupSize: "6-15 people",
+      transit: "Delhi ISBT Semi-Sleeper Volvo Bus + private local taxis",
+      internet: "High-speed Wi-Fi with power backup for workation travelers",
+      bestSeason: "Year-round (temperatures 2°C to 22°C)",
       tags: ["Workation Trip", "Himachal"],
       description: "Unstructured, slow-paced workation for remote workers & creators in a traditional insulated mud house with reliable Wi-Fi.",
+      about: "Designed for travelers seeking peaceful mountain life without rigid tourist schedules. Combines town exploration (monasteries, Tibetan art, waterfalls) with a 5-6 km forest trek to a summit mudhouse/campsite. Weekend travelers return after Day 3, while Workation travelers stay for 4 extra days of remote work and village living.",
+      highlights: [
+        "Homestay & Full Kitchen Access: equipped kitchen to cook meals, brew coffee, or request local food",
+        "5-6 KM Forest Trek & Summit Stay: hike to a summit stay in a traditional mud house or campsite",
+        "Town Culture & Waterfalls: local monasteries, Tibetan art centers, and hidden waterfalls",
+        "Workation-Ready Infrastructure: reliable high-speed Wi-Fi and power backup",
+        "Flexible Duration: choose 3-Day Weekend or 7-Day Workation based on availability"
+      ],
+      itinerary: [
+        "Day 0: Departure from Delhi ISBT after 9 PM, overnight semi-sleeper Volvo journey",
+        "Day 1: Arrival, town culture tour, monasteries & waterfall, welcome dinner at homestay",
+        "Day 2: 5-6 KM guided forest trek to summit, mud house/campsite stay, sunset bonfire and starry night",
+        "Day 3: Descend, cafe exploration, riverside chill - Weekend guests return to Delhi overnight; Workation guests return to homestay",
+        "Days 4-6 (Workation guests only): remote work with Wi-Fi & power backup, kitchen access, evening walks in apple orchards, acoustic jam sessions",
+        "Day 7 (Workation guests only): farewell, overnight Volvo return to Delhi, arriving Day 8 morning"
+      ],
+      inclusions: [
+        "Semi-sleeper Volvo Bus (Delhi ISBT to Himachal return)",
+        "Local pickup/drop in private taxis",
+        "Mountain homestay accommodation with full kitchen access",
+        "Summit mud house / camping stay during forest trek",
+        "Guided 5-6 km forest trek with Trip Captain",
+        "High-speed Wi-Fi and power backup (for Workation guests)",
+        "Breakfasts and Dinners as per selected plan"
+      ],
+      exclusions: [
+        "Personal laundry, mobile recharge, personal cafe orders/alcohol",
+        "Extra porter charges for heavy personal luggage",
+        "Travel/medical insurance",
+        "Delays/expenses caused by natural disasters, roadblocks, or weather"
+      ],
       price: "₹11,999/-",
       dates: [
         { start: "2026-08-20", label: "20 Aug '26", status: "filling" },
@@ -282,6 +420,16 @@ WHATSAPP NUMBER - CRITICAL RULE:
   haven't given it, do not ask again - just keep answering their questions normally.
 - Never ask for it in response to a general question, a reassurance question, or small talk. Only
   ask when they've shown real intent to move forward with a booking.
+
+USING THIS KNOWLEDGE BASE:
+- It now has a LOT of detail per trip (full itinerary, inclusions, exclusions, things to carry, etc).
+  This is for answering SPECIFIC questions, not for dumping unprompted. If someone asks "what's the
+  itinerary", give a brief 2-3 line summary of the flow, not every single line - offer to share more
+  if they want specifics on a particular day.
+- If asked about inclusions/exclusions/things to carry/cancellation policy, answer directly and
+  specifically from this data - don't guess or invent anything not listed here.
+- Still keep the same short, human texting tone even when pulling from detailed data - a real person
+  wouldn't paste a full itinerary block into a DM either.
 
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
