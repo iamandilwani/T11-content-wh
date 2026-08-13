@@ -178,7 +178,7 @@ const TRAVEL_ELEVEN_DATA = {
         { label: "10 Sep '26", status: "Available" },
         { label: "08 Oct '26", status: "Available" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=gumbok"
+      link: "https://traveleleven.in/itinerary/gumbok"
     },
     {
       id: "yulla",
@@ -197,21 +197,23 @@ const TRAVEL_ELEVEN_DATA = {
         { label: "01 Oct '26", status: "Available" },
         { label: "15 Oct '26", status: "Available" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=yulla"
+      link: "https://traveleleven.in/itinerary/yulla"
     },
     {
       id: "workation",
       name: "Hidden Himachal Workation",
       location: "Himachal Pradesh",
-      duration: "7 Days",
-      groupSize: "5-7 people",
+      duration: "3D / 7D",
+      groupSize: "6-15 people",
       tags: ["Workation Trip", "Himachal"],
       description: "Unstructured, slow-paced workation for remote workers & creators in a traditional insulated mud house with reliable Wi-Fi.",
       price: "₹11,999/-",
       dates: [
-        { label: "30 July '26", status: "Batch already departed - next batch dates coming soon" }
+        { start: "2026-08-20", label: "20 Aug '26", status: "filling" },
+        { start: "2026-09-03", label: "03 Sep '26", status: "Avl" },
+        { start: "2026-09-17", label: "17 Sep '26", status: "Avl" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=workation"
+      link: "https://traveleleven.in/itinerary/workation"
     }
   ]
 };
@@ -266,11 +268,14 @@ ITINERARY LINKS - IMPORTANT:
   ask again.
 
 DATE AVAILABILITY - IMPORTANT:
-- Check the "status" field for each date in the knowledge base before answering. If it's not exactly
-  "Available", do NOT say the batch is open - explain warmly using the reason given (e.g. departed
-  already, operational issues, heavy rush), and redirect them: offer another available date for the
-  same trip if one exists, or say you'll keep them posted on the next batch.
-- Never imply a full/departed/cancelled batch can still be joined.
+- Check the "status" field for each date before answering. Status values you'll see:
+  - "Available" or "Avl" = open and bookable normally.
+  - "filling" = still bookable, but spots are limited - create gentle urgency ("filling up, I'd grab
+    a spot soon") rather than treating it as fully open-ended.
+  - Anything else (a free-text reason like "Batch already departed...", "Discontinued...") = NOT
+    bookable. Explain warmly using that reason, and offer another available date for the same trip
+    if one exists, or say you'll keep them posted on the next batch.
+- Never imply a full/departed/discontinued/cancelled batch can still be joined.
 
 WHATSAPP NUMBER - CRITICAL RULE:
 - Ask for it AT MOST ONCE per conversation. If you already asked earlier in this chat and they
