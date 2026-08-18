@@ -307,25 +307,24 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
 
     const contents = buildGeminiContents(senderId, messageText);
 
-    // Official Google Gemini Flash & Flash-Lite API model identifiers
+    // Gemini 3.5 Flash Lite & Gemini 3.6 Flash model endpoints as specified by Google API
     const modelsToTry = [
-      'gemini-1.5-flash-8b',
-      'gemini-2.0-flash-lite',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash'
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash'
     ];
 
     let replyText = null;
 
     for (const model of modelsToTry) {
       try {
+        // Attempt 1: Standard REST API payload with camelCase systemInstruction & multi-turn contents
         const res = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              system_instruction: {
+              systemInstruction: {
                 parts: [{ text: `${SYSTEM_PROMPT}${contextNote}` }]
               },
               contents: contents,
@@ -339,28 +338,28 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
         if (res.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
           replyText = data.candidates[0].content.parts[0].text.trim();
           break;
-        } else {
-          // If system_instruction model fails, try single-prompt legacy shape fallback
-          const legacyRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [
-                  { parts: [{ text: `${SYSTEM_PROMPT}${contextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
-                ],
-                generationConfig: { temperature: 0.3 }
-              }),
-            }
-          );
-          const legacyData = await legacyRes.json();
-          if (legacyRes.ok && legacyData?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            replyText = legacyData.candidates[0].content.parts[0].text.trim();
-            break;
-          } else {
-            console.error(`❌ Model ${model} failed:`, JSON.stringify(data || legacyData));
+        }
+
+        // Attempt 2: Legacy single-prompt payload fallback
+        const legacyRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                { parts: [{ text: `${SYSTEM_PROMPT}${contextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
+              ],
+              generationConfig: { temperature: 0.3 }
+            }),
           }
+        );
+        const legacyData = await legacyRes.json();
+        if (legacyRes.ok && legacyData?.candidates?.[0]?.content?.parts?.[0]?.text) {
+          replyText = legacyData.candidates[0].content.parts[0].text.trim();
+          break;
+        } else {
+          console.error(`❌ Model ${model} failed:`, JSON.stringify(data?.error || legacyData?.error || data));
         }
       } catch (err) {
         console.warn(`⚠️ Model ${model} request error:`, err.message);
