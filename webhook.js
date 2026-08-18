@@ -201,13 +201,12 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
       price: "₹11,999/-",
       dates: [
-        { label: "13 Aug '26", status: "Available" },
         { label: "10 Sep '26", status: "Available" },
         { label: "18 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" },
         { label: "08 Oct '26", status: "Available" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=gumbok"
+      link: "https://traveleleven.in/itinerary/gumbok"
     },
     {
       id: "yulla",
@@ -226,21 +225,38 @@ const TRAVEL_ELEVEN_DATA = {
         { label: "01 Oct '26", status: "Available" },
         { label: "15 Oct '26", status: "Available" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=yulla"
+      link: "https://traveleleven.in/itinerary/yulla"
     },
     {
       id: "workation",
       name: "Hidden Himachal Workation",
       location: "Himachal Pradesh",
-      duration: "7 Days",
-      groupSize: "5-7 people",
+      duration: "3 Days (Weekend) / 7 Days (Workation)",
+      groupSize: "6-15 people",
       tags: ["Workation Trip", "Himachal"],
-      description: "Unstructured, slow-paced workation for remote workers & creators in a traditional insulated mud house with reliable Wi-Fi.",
-      price: "₹11,999/-",
+      description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
+      price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
       dates: [
-        { label: "30 July '26", status: "Available" }
+        { label: "20 Aug '26", status: "Available" },
+        { label: "03 Sep '26", status: "Available" },
+        { label: "17 Sep '26", status: "Available" }
       ],
-      link: "https://traveleleven.in/itinerary.html?trip=workation"
+      link: "https://traveleleven.in/itinerary/workation"
+    },
+    {
+      id: "madhyamaheshwar",
+      name: "Madhyamaheshwar Trek",
+      location: "Rudraprayag, Uttarakhand",
+      duration: "4D/3N",
+      groupSize: "6-15 people",
+      tags: ["Panch Kedar", "Chaukhamba Views"],
+      description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
+      price: "₹9,999/-",
+      dates: [
+        { label: "04 Sep '26", status: "Available" },
+        { label: "18 Sep '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/madhyamaheshwar"
     }
   ]
 };
@@ -266,12 +282,11 @@ FORMATTING - THIS IS CRITICAL:
 
 CONVERSATION LOGIC:
 1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on the experience, dates, and exclusivity.
-2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation):
+2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation, Madhyamaheshwar):
    - Highlight that slots are strictly limited and invite-only to keep squad vibes right.
-   - Give duration, dates, and direct link.
-   - Call to Action: Direct them to click "Request Invite" on the website link. Only ALSO ask for
-     their WhatsApp number if they show real intent to move forward (e.g. "how do I book", "I'm
-     interested", "sounds good") - not on a first general question like "what trips do you have?"
+   - Mention duration and upcoming dates naturally.
+   - ITINERARY LINK STRICT RULE: Do NOT send the website/itinerary link in every reply. ONLY send the link if the user explicitly asks for it (e.g. "send link", "itinerary link", "details?", "where can I see the itinerary?") OR if they ask for full day-by-day details. For general questions, share dates/vibe and ask if they would like you to share the full itinerary link!
+   - Call to Action: Direct them to click "Request Invite" on the website link (when link is requested). Only ALSO ask for their WhatsApp number if they show real intent to move forward (e.g. "how do I book", "I'm interested", "sounds good") - not on a first general question like "what trips do you have?"
 3. CUSTOMIZED TRIPS / OTHER LOCATIONS (e.g., Kashmir, Spiti, Bali, Europe):
    - Enthusiastically confirm we curate custom offbeat journeys for any location.
    - Ask for their travel dates and group size. Only ask for WhatsApp too if they seem ready to move
@@ -280,9 +295,17 @@ CONVERSATION LOGIC:
    - Safety for Girls/Solo Travelers: Reassure warmly! Over 50% of our community members are solo women. Our invite-only vetting ensures a safe, respectful squad, led by experienced ground captains.
    - Group Size: Explain that we run micro-groups (6-15 people for group trips, 5-7 for workations) to maintain real community vibes rather than commercial tourist buses.
    - Weather/Road Conditions: Reassure that departures are scheduled during safe seasons and monitored daily by ground teams.
-   - These are reassurance questions - just answer them warmly. Do NOT ask for a WhatsApp number here,
-     that feels pushy when someone is just asking if it's safe.
+   - These are reassurance questions - just answer them warmly. Do NOT ask for a WhatsApp number or push itinerary links here.
 5. URGENT BOOKINGS: Share official WhatsApp (+91 94859 86981).
+
+ITINERARY LINK - CRITICAL RULE:
+- Never attach the itinerary link repeatedly in every turn.
+- Only provide the link when asked or when confirming intent. If you have already offered details, ask: "Would you like me to send over the full itinerary link?"
+
+UPCOMING BATCHES ONLY RULE - CRITICAL:
+- Today's current date is dynamically provided in the prompt context.
+- ONLY list or mention departure batch dates that fall on or after today's date.
+- NEVER mention past or already departed batch dates. Omit departed dates completely.
 
 WHATSAPP NUMBER - CRITICAL RULE:
 - Ask for it AT MOST ONCE per conversation. If you already asked earlier in this chat and they
@@ -301,9 +324,12 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
   recordHistory(senderId, 'user', messageText);
 
   try {
-    const contextNote = alreadyAskedForWhatsApp
+    const todayStr = new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' });
+    const dynamicDateNote = `\n\nTODAY'S CURRENT DATE (IST): ${todayStr}. CRITICAL RULE: ONLY share upcoming batch dates that fall on or after today's date (${todayStr}). NEVER mention past or already departed batches.`;
+    const whatsappNote = alreadyAskedForWhatsApp
       ? '\n\nIMPORTANT CONTEXT: You have already asked this person for their WhatsApp number earlier in this conversation. Do NOT ask again - just answer their message normally.'
       : '';
+    const fullContextNote = `${whatsappNote}${dynamicDateNote}`;
 
     const contents = buildGeminiContents(senderId, messageText);
 
@@ -325,7 +351,7 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               systemInstruction: {
-                parts: [{ text: `${SYSTEM_PROMPT}${contextNote}` }]
+                parts: [{ text: `${SYSTEM_PROMPT}${fullContextNote}` }]
               },
               contents: contents,
               generationConfig: {
@@ -348,7 +374,7 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [
-                { parts: [{ text: `${SYSTEM_PROMPT}${contextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
+                { parts: [{ text: `${SYSTEM_PROMPT}${fullContextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
               ],
               generationConfig: { temperature: 0.3 }
             }),
