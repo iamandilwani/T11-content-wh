@@ -307,10 +307,12 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
 
     const contents = buildGeminiContents(senderId, messageText);
 
-    // Flash Lite models only
+    // Official Google Gemini Flash & Flash-Lite API model identifiers
     const modelsToTry = [
-      'gemini-1.5-flash-lite',
-      'gemini-2.5-flash-lite'
+      'gemini-1.5-flash-8b',
+      'gemini-2.0-flash-lite',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash'
     ];
 
     let replyText = null;
@@ -356,10 +358,12 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
           if (legacyRes.ok && legacyData?.candidates?.[0]?.content?.parts?.[0]?.text) {
             replyText = legacyData.candidates[0].content.parts[0].text.trim();
             break;
+          } else {
+            console.error(`❌ Model ${model} failed:`, JSON.stringify(data || legacyData));
           }
         }
       } catch (err) {
-        console.warn(`⚠️ Model ${model} call failed:`, err.message);
+        console.warn(`⚠️ Model ${model} request error:`, err.message);
       }
     }
 
