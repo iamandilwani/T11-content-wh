@@ -261,7 +261,8 @@ const TRAVEL_ELEVEN_DATA = {
   ]
 };
 
-const SYSTEM_PROMPT = `
+function getSystemPrompt() {
+  return `
 You are the Instagram DM assistant for @traveleleven.in ("Turning your 11:11 wishes into journeys.").
 
 TONE & CHAT STYLE — CRITICAL HUMAN RULES:
@@ -301,6 +302,22 @@ WHATSAPP NUMBER - CRITICAL RULE:
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
 `.trim();
+}
+
+function findTrip(query) {
+  if (!query) return null;
+  const q = query.toLowerCase().trim();
+  return TRAVEL_ELEVEN_DATA.group_departures.find(t => {
+    const id = t.id.toLowerCase();
+    const name = t.name.toLowerCase();
+    if (id === q || name.includes(q)) return true;
+    if ((q.includes('gomboc') || q.includes('gombok') || q.includes('zanskar') || q.includes('jispa')) && id === 'gumbok') return true;
+    if ((q.includes('yulla') || q.includes('krishna')) && id === 'yulla') return true;
+    if ((q.includes('workation') || q.includes('himachal') || q.includes('work')) && id === 'workation') return true;
+    if ((q.includes('madhyamaheshwar') || q.includes('mm') || q.includes('kedar')) && id === 'madhyamaheshwar') return true;
+    return false;
+  });
+}
 
 async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
   if (!GEMINI_API_KEY) return FALLBACK_REPLY;
@@ -315,6 +332,7 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
       ? '\n\nIMPORTANT CONTEXT: You have already asked this person for their WhatsApp number earlier in this conversation. Do NOT ask again - just answer their message normally.'
       : '';
     const fullContextNote = `${whatsappNote}${dynamicDateNote}`;
+    const systemPrompt = getSystemPrompt();
 
     const contents = buildGeminiContents(senderId, messageText);
 
@@ -336,7 +354,7 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               systemInstruction: {
-                parts: [{ text: `${SYSTEM_PROMPT}${fullContextNote}` }]
+                parts: [{ text: `${systemPrompt}${fullContextNote}` }]
               },
               contents: contents,
               generationConfig: {
@@ -359,7 +377,7 @@ async function generateReply(senderId, messageText, alreadyAskedForWhatsApp) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [
-                { parts: [{ text: `${SYSTEM_PROMPT}${fullContextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
+                { parts: [{ text: `${systemPrompt}${fullContextNote}\n\nIncoming DM: "${messageText}"\n\nYour reply:` }] }
               ],
               generationConfig: { temperature: 0.3 }
             }),
@@ -739,9 +757,9 @@ app.post('/telegram-webhook', async (req, res) => {
       return;
     }
 
-    const text = messageObj.text?.trim() || '';
-    if (!text) return;
-    const lowerMsg = text.toLowerCase();
+    // Strip bot handle from command (e.g. /addbatch@MyBot -> /addbatch)
+    let cleanText = text.replace(/^(\/[a-zA-Z0-9_]+)@[a-zA-Z0-9_]+/i, '$1');
+    const lowerMsg = cleanText.toLowerCase().trim();
 
     // A. DIRECT INSTAGRAM DM REPLY FROM TELEGRAM
     let targetSenderId = null;
@@ -755,10 +773,10 @@ app.post('/telegram-webhook', async (req, res) => {
         if (match) targetSenderId = match[1];
       }
       if (targetSenderId) {
-        replyContent = text.replace(/^(?:reply:|r:|\/reply)\s*/i, '').trim();
+        replyContent = cleanText.replace(/^(?:reply:|r:|\/reply)\s*/i, '').trim();
       }
-    } else if (/^(?:reply:|r:|\/reply)\s+/i.test(text)) {
-      const parts = text.split(/\s+/);
+    } else if (/^(?:reply:|r:|\/reply)\s+/i.test(cleanText)) {
+      const parts = cleanText.split(/\s+/);
       if (parts.length >= 3 && /^\d{10,20}$/.test(parts[1])) {
         targetSenderId = parts[1];
         replyContent = parts.slice(2).join(' ');
@@ -786,8 +804,8 @@ app.post('/telegram-webhook', async (req, res) => {
       dailyStats = { totalInquiries: 0, hotLeads: [], followUpLeads: [], casualCount: 0 };
       uniqueUsersToday = new Set();
       await notifyTelegram(`🔄 <b>Daily lead stats have been reset!</b>`);
-    } else if (lowerMsg.startsWith('/mute')) {
-      const senderId = text.split(/\s+/)[1];
+    } else if (lowerMsg.startsWith('/mute') || lowerMsg.startsWith('mute ')) {
+      const senderId = cleanText.split(/\s+/)[1];
       if (!senderId) {
         await notifyTelegram(`⚠️ Usage: <code>/mute SENDER_ID</code>`);
       } else {
@@ -795,8 +813,8 @@ app.post('/telegram-webhook', async (req, res) => {
         await persistMute(senderId, 'mute');
         await notifyTelegram(`🔇 AI permanently muted for <code>${senderId}</code>.`);
       }
-    } else if (lowerMsg.startsWith('/unmute')) {
-      const senderId = text.split(/\s+/)[1];
+    } else if (lowerMsg.startsWith('/unmute') || lowerMsg.startsWith('unmute ')) {
+      const senderId = cleanText.split(/\s+/)[1];
       if (!senderId) {
         await notifyTelegram(`⚠️ Usage: <code>/unmute SENDER_ID</code>`);
       } else {
@@ -823,10 +841,10 @@ app.post('/telegram-webhook', async (req, res) => {
           });
         await notifyTelegram(`💬 <b>Recent conversations</b>\n\n${lines.join('\n\n')}`);
       }
-    } else if (lowerMsg === '/batches' || lowerMsg === 'batches') {
+    } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list') {
       let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES</b>\n--------------------------------------------\n`;
       for (const trip of TRAVEL_ELEVEN_DATA.group_departures) {
-        batchText += `\n<b>${trip.name}</b> (<code>${trip.id}</code>):\n`;
+        batchText += `\n<b>${trip.name}</b> (ID: <code>${trip.id}</code>):\n`;
         if (trip.dates && trip.dates.length > 0) {
           trip.dates.forEach(d => {
             batchText += `  • ${d.label} (${d.status || 'Available'})\n`;
@@ -837,31 +855,39 @@ app.post('/telegram-webhook', async (req, res) => {
       }
       batchText += `\n<i>Add/Remove batches anytime:</i>\n<code>/addbatch <trip_id> <date_label></code>\n<code>/removebatch <trip_id> <date_label></code>`;
       await notifyTelegram(batchText);
-    } else if (lowerMsg.startsWith('/addbatch')) {
-      const parts = text.split(/\s+/);
-      if (parts.length < 3) {
+    } else if (lowerMsg.startsWith('/addbatch') || lowerMsg.startsWith('addbatch') || lowerMsg.startsWith('/add_batch') || lowerMsg.startsWith('add batch')) {
+      const parts = cleanText.split(/\s+/);
+      const args = (parts[0].includes('batch') || parts[0].includes('add')) && parts.length > 1 && (parts[0].endsWith('batch') || parts[1] === 'batch')
+        ? parts.slice(lowerMsg.startsWith('add batch') ? 2 : 1)
+        : parts.slice(1);
+
+      if (args.length < 2) {
         await notifyTelegram(`⚠️ Usage: <code>/addbatch <trip_id> <date_label></code>\nExample: <code>/addbatch gumbok 15 Oct '26</code>`);
       } else {
-        const tripId = parts[1].toLowerCase();
-        const dateLabel = parts.slice(2).join(' ');
-        const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId || t.name.toLowerCase().includes(tripId));
+        const tripQuery = args[0];
+        const dateLabel = args.slice(1).join(' ');
+        const trip = findTrip(tripQuery);
         if (!trip) {
-          await notifyTelegram(`❌ Trip <code>${tripId}</code> not found! Available trip IDs: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>.`);
         } else {
           trip.dates.push({ label: dateLabel, status: "Available" });
-          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!`);
+          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n<i>AI will now share this date in upcoming DMs.</i>`);
         }
       }
-    } else if (lowerMsg.startsWith('/removebatch')) {
-      const parts = text.split(/\s+/);
-      if (parts.length < 3) {
-        await notifyTelegram(`⚠️ Usage: <code>/removebatch <trip_id> <date_label></code>`);
+    } else if (lowerMsg.startsWith('/removebatch') || lowerMsg.startsWith('removebatch') || lowerMsg.startsWith('/remove_batch') || lowerMsg.startsWith('remove batch') || lowerMsg.startsWith('/deletebatch') || lowerMsg.startsWith('deletebatch')) {
+      const parts = cleanText.split(/\s+/);
+      const args = lowerMsg.startsWith('remove batch') || lowerMsg.startsWith('delete batch')
+        ? parts.slice(2)
+        : parts.slice(1);
+
+      if (args.length < 2) {
+        await notifyTelegram(`⚠️ Usage: <code>/removebatch <trip_id> <date_label></code>\nExample: <code>/removebatch gumbok 15 Oct</code>`);
       } else {
-        const tripId = parts[1].toLowerCase();
-        const dateQuery = parts.slice(2).join(' ').toLowerCase();
-        const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId || t.name.toLowerCase().includes(tripId));
+        const tripQuery = args[0];
+        const dateQuery = args.slice(1).join(' ').toLowerCase();
+        const trip = findTrip(tripQuery);
         if (!trip) {
-          await notifyTelegram(`❌ Trip <code>${tripId}</code> not found.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found.`);
         } else {
           const idx = trip.dates.findIndex(d => d.label.toLowerCase().includes(dateQuery));
           if (idx === -1) {
