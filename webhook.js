@@ -201,10 +201,10 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
       price: "₹11,999/-",
       dates: [
-        { label: "10 Sep '26", status: "Available" },
-        { label: "18 Sep '26", status: "Available" },
+        { label: "10 Sep '26 (Stargazing Special)", status: "Available" },
+        { label: "24 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" },
-        { label: "08 Oct '26", status: "Available" }
+        { label: "08 Oct '26 (Stargazing Special)", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/gumbok"
     },
@@ -219,11 +219,9 @@ const TRAVEL_ELEVEN_DATA = {
       price: "₹8,999/-",
       dates: [
         { label: "27 Aug '26", status: "Available" },
-        { label: "02 Sep '26 (Janmashtami Special)", status: "Available" },
         { label: "17 Sep '26", status: "Available" },
         { label: "24 Sep '26", status: "Available" },
-        { label: "01 Oct '26", status: "Available" },
-        { label: "15 Oct '26", status: "Available" }
+        { label: "01 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/yulla"
     },
@@ -253,8 +251,10 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
       price: "₹9,999/-",
       dates: [
-        { label: "04 Sep '26", status: "Available" },
-        { label: "18 Sep '26", status: "Available" }
+        { label: "02 Sep '26", status: "Available" },
+        { label: "09 Sep '26", status: "Available" },
+        { label: "16 Sep '26", status: "Available" },
+        { label: "23 Sep '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
     }
