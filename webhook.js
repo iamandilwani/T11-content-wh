@@ -264,43 +264,30 @@ const TRAVEL_ELEVEN_DATA = {
 const SYSTEM_PROMPT = `
 You are the Instagram DM assistant for @traveleleven.in ("Turning your 11:11 wishes into journeys.").
 
-BRAND CONCEPT:
-- Travel Eleven is an EXCLUSIVE, INVITE-ONLY offbeat travel community!
-- Guests do not directly add to cart; they click "Request Invite" on the website so our team can curate the squad.
-- Tone: Offbeat, curated, real, exclusive yet warm, and casual (Indian English friendly).
-- Length: Keep replies under 2-3 short sentences max. This is an Instagram DM!
-
-FORMATTING - THIS IS CRITICAL:
-- NEVER write one dense paragraph. Real people texting break their thoughts into short separate
-  lines using actual line breaks (\n), not one run-on sentence with commas.
-- If mentioning more than one trip/option, put EACH one on its own line, not comma-separated in
-  a sentence. Example of BAD formatting (never do this):
-  "We have two amazing trips: Gumbok Rangan and Yulla Kanda, plus a Workation."
-  Example of GOOD formatting (always do this):
-  "Hey! ✨\nWe've got a few offbeat trips coming up:\n🏔️ Gumbok Rangan (Zanskar)\n🙏 Yulla Kanda Trek\n💻 Himachal Workation\n\nWant details on any of these?"
-- Keep each line short - if a line feels like it's doing too much, break it into two lines instead.
+TONE & CHAT STYLE — CRITICAL HUMAN RULES:
+- TALK LIKE A REAL HUMAN TEXTING ON INSTAGRAM DM:
+  - Keep it casual, chill, direct, and low-key (like a friendly traveler texting back).
+  - ABSOLUTELY NO OVER-APPRECIATION OR CHEESY COMPLIMENTS! Never say fake AI stuff like "Awesome squad of two is perfect size!", "That's incredible!", "What a fantastic choice!", or over-hype everything.
+  - Just acknowledge naturally ("Sounds good", "Got it", "Nice", "Cool"). Do NOT compliment every detail.
+- KEEP REPLIES SHORT & NATURAL:
+  - Use short phrases when detailed explanations aren't needed. Don't write formal essays or robotic explanations.
+  - Keep total replies under 1-3 short text lines max.
+- FORMATTING:
+  - Break thoughts into separate short text lines using line breaks (\n). Never send one dense block of text.
 
 CONVERSATION LOGIC:
-1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on the experience, dates, and exclusivity.
+1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on dates and vibe.
 2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation, Madhyamaheshwar):
-   - Highlight that slots are strictly limited and invite-only to keep squad vibes right.
    - Mention duration and upcoming dates naturally.
-   - ITINERARY LINK STRICT RULE: Do NOT send the website/itinerary link in every reply. ONLY send the link if the user explicitly asks for it (e.g. "send link", "itinerary link", "details?", "where can I see the itinerary?") OR if they ask for full day-by-day details. For general questions, share dates/vibe and ask if they would like you to share the full itinerary link!
-   - Call to Action: Direct them to click "Request Invite" on the website link (when link is requested). Only ALSO ask for their WhatsApp number if they show real intent to move forward (e.g. "how do I book", "I'm interested", "sounds good") - not on a first general question like "what trips do you have?"
-3. CUSTOMIZED TRIPS / OTHER LOCATIONS (e.g., Kashmir, Spiti, Bali, Europe):
-   - Enthusiastically confirm we curate custom offbeat journeys for any location.
-   - Ask for their travel dates and group size. Only ask for WhatsApp too if they seem ready to move
-     forward, not on a first curious question.
-4. SAFETY, GROUP SIZE & WEATHER QUESTIONS:
-   - Safety for Girls/Solo Travelers: Reassure warmly! Over 50% of our community members are solo women. Our invite-only vetting ensures a safe, respectful squad, led by experienced ground captains.
-   - Group Size: Explain that we run micro-groups (6-15 people for group trips, 5-7 for workations) to maintain real community vibes rather than commercial tourist buses.
-   - Weather/Road Conditions: Reassure that departures are scheduled during safe seasons and monitored daily by ground teams.
-   - These are reassurance questions - just answer them warmly. Do NOT ask for a WhatsApp number or push itinerary links here.
-5. URGENT BOOKINGS: Share official WhatsApp (+91 94859 86981).
+   - Direct them to "Request Invite" on website ONLY when they show interest.
+3. CUSTOMIZED TRIPS / OTHER LOCATIONS (Kashmir, Spiti, Bali, etc.):
+   - Confirm we curate custom offbeat trips. Ask for travel dates & group size briefly.
+4. SAFETY & REASSURANCE:
+   - Answer reassurance questions (solo female safety, weather) simply and warmly without pushiness.
 
-ITINERARY LINK - CRITICAL RULE:
-- Never attach the itinerary link repeatedly in every turn.
-- Only provide the link when asked or when confirming intent. If you have already offered details, ask: "Would you like me to send over the full itinerary link?"
+ITINERARY LINK - STRICT RULE:
+- Do NOT send the website link in every reply.
+- ONLY send the link if explicitly asked (e.g. "send link", "itinerary link", "details?") or when requested. For general queries, share dates/vibe and ask: "Want me to send the full itinerary link?"
 
 UPCOMING BATCHES ONLY RULE - CRITICAL:
 - Today's current date is dynamically provided in the prompt context.
@@ -308,10 +295,8 @@ UPCOMING BATCHES ONLY RULE - CRITICAL:
 - NEVER mention past or already departed batch dates. Omit departed dates completely.
 
 WHATSAPP NUMBER - CRITICAL RULE:
-- Ask for it AT MOST ONCE per conversation. If you already asked earlier in this chat and they
-  haven't given it, do not ask again - just keep answering their questions normally.
-- Never ask for it in response to a general question, a reassurance question, or small talk. Only
-  ask when they've shown real intent to move forward with a booking.
+- Ask for it AT MOST ONCE per chat.
+- Never ask for it on general questions or small talk—only when they express clear booking intent.
 
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
@@ -418,19 +403,68 @@ async function sendInstagramReply(recipientId, text) {
   return data;
 }
 
+function escapeTelegramHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+const contactedLeads = new Set();
+const dealWonLeads = new Set();
+const lastAlertSenderByMsgId = new Map(); // msg_id -> senderId
+
 async function notifyTelegram(text, replyMarkup = null) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    console.warn('⚠️ TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in environment variables!');
+    return null;
+  }
   try {
     const payload = { chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('❌ Telegram API notification error:', JSON.stringify(data));
+    }
+    return data?.result?.message_id || null;
+  } catch (err) {
+    console.error('❌ Failed to notify Telegram:', err.message);
+    return null;
+  }
+}
+
+async function answerTelegramCallback(callbackQueryId, text = '') {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+    });
+  } catch (err) {
+    console.error('❌ Failed to answer Telegram callback query:', err.message);
+  }
+}
+
+async function editTelegramMessageText(chatId, messageId, text, replyMarkup = null) {
+  if (!TELEGRAM_BOT_TOKEN) return;
+  try {
+    const payload = { chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML' };
+    if (replyMarkup) payload.reply_markup = replyMarkup;
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
   } catch (err) {
-    console.error('❌ Failed to notify Telegram:', err.message);
+    console.error('❌ Failed to edit Telegram message:', err.message);
   }
 }
 
@@ -576,26 +610,48 @@ if (!senderId || !messageText) continue;
 
           const cleanDigits = phone.replace(/\D/g, '');
           const inlineButtons = [];
-          const row = [];
+          const row1 = [];
           if (cleanDigits.length >= 10) {
             const waNumber = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
-            row.push({ text: `📲 WhatsApp ${phone}`, url: `https://wa.me/${waNumber}` });
+            row1.push({ text: `📲 WhatsApp ${phone}`, url: `https://wa.me/${waNumber}` });
           }
           const username = senderNames.get(senderId);
           if (username) {
-            row.push({ text: `📸 Instagram @${username}`, url: `https://instagram.com/${username}` });
+            row1.push({ text: `📸 Instagram @${username}`, url: `https://instagram.com/${username}` });
           }
-          if (row.length > 0) inlineButtons.push(row);
+          if (row1.length > 0) inlineButtons.push(row1);
 
-          await notifyTelegram(
+          inlineButtons.push([
+            { text: "✅ Contacted", callback_data: `cb_cnt_${senderId}` },
+            { text: "⏸️ Mute 24h", callback_data: `cb_m24_${senderId}` },
+            { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
+          ]);
+
+          const msgId = await notifyTelegram(
             `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
             `<b>Phone:</b> <code>${phone}</code>\n` +
             `<b>From:</b> ${label}\n` +
-            `<b>Message:</b> "${messageText}"\n\n` +
+            `<b>Message:</b> "${escapeTelegramHtml(messageText)}"\n\n` +
             `⚡ <i>Call or WhatsApp them right now!</i>\n` +
-            `AI is auto-paused for this chat for 45 min. To hold longer: <code>/mute ${senderId}</code>`,
-            inlineButtons.length > 0 ? { inline_keyboard: inlineButtons } : null
+            `AI auto-paused 45m. Reply to this msg with <code>reply: text</code> to reply directly on IG DM!`,
+            { inline_keyboard: inlineButtons }
           );
+
+          if (msgId) lastAlertSenderByMsgId.set(msgId.toString(), senderId);
+
+          // 30-Minute Uncontacted Hot Lead Escalation
+          const leadId = senderId;
+          const leadPhone = phone;
+          setTimeout(async () => {
+            if (!contactedLeads.has(leadId) && !dealWonLeads.has(leadId)) {
+              const currentLabel = identifyLabel(leadId);
+              await notifyTelegram(
+                `⚠️ <b>UNCONTACTED HOT LEAD REMINDER!</b>\n\n` +
+                `Hot Lead ${currentLabel} (Phone: <code>${leadPhone}</code>) was received 30 mins ago and hasn't been marked as contacted yet!\n\n` +
+                `⚡ <i>Please call or WhatsApp them now!</i>`
+              );
+            }
+          }, 30 * 60 * 1000);
         } else if (isHighIntent) {
           dailyStats.followUpLeads.push({ senderId, text: messageText });
 
@@ -605,15 +661,23 @@ if (!senderId || !messageText) continue;
           }
 
           const username = senderNames.get(senderId);
-          const inlineButtons = username ? [
-            [{ text: `📸 Open Instagram @${username}`, url: `https://instagram.com/${username}` }]
-          ] : null;
+          const inlineButtons = [];
+          if (username) {
+            inlineButtons.push([{ text: `📸 Open Instagram @${username}`, url: `https://instagram.com/${username}` }]);
+          }
+          inlineButtons.push([
+            { text: "✅ Contacted", callback_data: `cb_cnt_${senderId}` },
+            { text: "⏸️ Mute 24h", callback_data: `cb_m24_${senderId}` },
+            { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
+          ]);
 
-          await notifyTelegram(
-            `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${messageText.slice(0, 200)}"\n` +
-            `To pause AI: <code>/mute ${senderId}</code>`,
-            inlineButtons ? { inline_keyboard: inlineButtons } : null
+          const msgId = await notifyTelegram(
+            `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${escapeTelegramHtml(messageText.slice(0, 200))}"\n` +
+            `Reply to this msg with <code>reply: text</code> to reply directly on IG DM!`,
+            { inline_keyboard: inlineButtons }
           );
+
+          if (msgId) lastAlertSenderByMsgId.set(msgId.toString(), senderId);
         } else {
           dailyStats.casualCount++;
           // Casual chats aren't logged to the sheet or pinged to Telegram -
@@ -626,44 +690,112 @@ if (!senderId || !messageText) continue;
   }
 });
 
-// --- ON-DEMAND TELEGRAM COMMANDS (/report, /hot, /reset) ---
+// --- ON-DEMAND TELEGRAM COMMANDS & INTERACTIVE CALLBACKS ---
 app.post('/telegram-webhook', async (req, res) => {
   res.sendStatus(200);
 
   try {
-    const incomingChatId = req.body.message?.chat?.id?.toString();
-    const text = req.body.message?.text?.toLowerCase()?.trim();
-    if (!text) return;
+    // 1. HANDLE CALLBACK QUERIES (INLINE BUTTON CLICKS)
+    if (req.body.callback_query) {
+      const cb = req.body.callback_query;
+      const cbId = cb.id;
+      const data = cb.data || '';
+      const chatId = cb.message?.chat?.id?.toString();
 
-    // Security: only YOU (the configured chat id) can trigger these commands.
-    // Without this, anyone who discovers this URL could POST a fake payload
-    // and wipe your lead data via /reset.
+      if (chatId !== TELEGRAM_CHAT_ID?.toString()) {
+        await answerTelegramCallback(cbId, 'Unauthorized chat');
+        return;
+      }
+
+      if (data.startsWith('cb_cnt_')) {
+        const senderId = data.replace('cb_cnt_', '');
+        contactedLeads.add(senderId);
+        autoMuteUntil.set(senderId, Date.now() + 24 * 60 * 60 * 1000);
+        await answerTelegramCallback(cbId, '✅ Marked as Contacted!');
+        await notifyTelegram(`✅ Lead <code>${senderId}</code> marked as <b>CONTACTED</b> by team! AI paused for 24h.`);
+      } else if (data.startsWith('cb_m24_')) {
+        const senderId = data.replace('cb_m24_', '');
+        autoMuteUntil.set(senderId, Date.now() + 24 * 60 * 60 * 1000);
+        await answerTelegramCallback(cbId, '⏸️ AI muted for 24 hours!');
+        await notifyTelegram(`⏸️ AI paused for 24h for user <code>${senderId}</code>.`);
+      } else if (data.startsWith('cb_won_')) {
+        const senderId = data.replace('cb_won_', '');
+        contactedLeads.add(senderId);
+        dealWonLeads.add(senderId);
+        autoMuteUntil.set(senderId, Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await answerTelegramCallback(cbId, '🏆 Deal marked as WON!');
+        await notifyTelegram(`🎉 <b>DEAL WON!</b> User <code>${senderId}</code> converted into a traveler! 🥳`);
+      }
+      return;
+    }
+
+    // 2. HANDLE TELEGRAM MESSAGES & COMMANDS
+    const messageObj = req.body.message;
+    if (!messageObj) return;
+
+    const incomingChatId = messageObj.chat?.id?.toString();
     if (!incomingChatId || incomingChatId !== TELEGRAM_CHAT_ID?.toString()) {
       console.log(`⚠️ Ignored Telegram command from unauthorized chat id: ${incomingChatId}`);
       return;
     }
 
-    if (text === '/report' || text === 'report' || text === 'summary') {
+    const text = messageObj.text?.trim() || '';
+    if (!text) return;
+    const lowerMsg = text.toLowerCase();
+
+    // A. DIRECT INSTAGRAM DM REPLY FROM TELEGRAM
+    let targetSenderId = null;
+    let replyContent = null;
+
+    if (messageObj.reply_to_message) {
+      const replyToId = messageObj.reply_to_message.message_id?.toString();
+      targetSenderId = lastAlertSenderByMsgId.get(replyToId);
+      if (!targetSenderId) {
+        const match = (messageObj.reply_to_message.text || '').match(/(?:ID:\s*|<code>)(\d{10,20})/);
+        if (match) targetSenderId = match[1];
+      }
+      if (targetSenderId) {
+        replyContent = text.replace(/^(?:reply:|r:|\/reply)\s*/i, '').trim();
+      }
+    } else if (/^(?:reply:|r:|\/reply)\s+/i.test(text)) {
+      const parts = text.split(/\s+/);
+      if (parts.length >= 3 && /^\d{10,20}$/.test(parts[1])) {
+        targetSenderId = parts[1];
+        replyContent = parts.slice(2).join(' ');
+      }
+    }
+
+    if (targetSenderId && replyContent) {
+      await sendInstagramReply(targetSenderId, replyContent);
+      autoMuteUntil.set(targetSenderId, Date.now() + 24 * 60 * 60 * 1000);
+      recordHistory(targetSenderId, 'model', replyContent);
+      const label = identifyLabel(targetSenderId);
+      await notifyTelegram(`✅ <b>Direct IG DM Sent!</b>\nTo: ${label}\nMessage: "${escapeTelegramHtml(replyContent)}"\n<i>AI auto-paused 24h for human chat.</i>`);
+      return;
+    }
+
+    // B. TELEGRAM COMMANDS
+    if (lowerMsg === '/report' || lowerMsg === 'report' || lowerMsg === 'summary') {
       await notifyTelegram(generateReportText("ON-DEMAND LEAD REPORT"));
-    } else if (text === '/hot' || text === 'hot') {
+    } else if (lowerMsg === '/hot' || lowerMsg === 'hot') {
       let hotText = dailyStats.hotLeads.length > 0
-        ? dailyStats.hotLeads.map((l, i) => `${i + 1}. <b>${l.phone}</b> (ID: <code>${l.senderId}</code>)\n   Msg: "${l.text}"`).join('\n\n')
+        ? dailyStats.hotLeads.map((l, i) => `${i + 1}. <b>${l.phone}</b> (ID: <code>${l.senderId}</code>)\n   Msg: "${escapeTelegramHtml(l.text)}"`).join('\n\n')
         : 'No hot leads captured yet today.';
       await notifyTelegram(`🔥 <b>HOT LEADS TODAY (${dailyStats.hotLeads.length})</b>\n\n${hotText}`);
-    } else if (text === '/reset' || text === 'reset') {
+    } else if (lowerMsg === '/reset' || lowerMsg === 'reset') {
       dailyStats = { totalInquiries: 0, hotLeads: [], followUpLeads: [], casualCount: 0 };
       uniqueUsersToday = new Set();
       await notifyTelegram(`🔄 <b>Daily lead stats have been reset!</b>`);
-    } else if (text.startsWith('/mute')) {
+    } else if (lowerMsg.startsWith('/mute')) {
       const senderId = text.split(/\s+/)[1];
       if (!senderId) {
-        await notifyTelegram(`⚠️ Usage: <code>/mute SENDER_ID</code>\n(Find the sender ID in any lead notification above.)`);
+        await notifyTelegram(`⚠️ Usage: <code>/mute SENDER_ID</code>`);
       } else {
         optedOut.add(senderId);
         await persistMute(senderId, 'mute');
-        await notifyTelegram(`🔇 AI permanently muted for <code>${senderId}</code> (survives server restarts). Send <code>/unmute ${senderId}</code> to re-enable.`);
+        await notifyTelegram(`🔇 AI permanently muted for <code>${senderId}</code>.`);
       }
-    } else if (text.startsWith('/unmute')) {
+    } else if (lowerMsg.startsWith('/unmute')) {
       const senderId = text.split(/\s+/)[1];
       if (!senderId) {
         await notifyTelegram(`⚠️ Usage: <code>/unmute SENDER_ID</code>`);
@@ -673,12 +805,12 @@ app.post('/telegram-webhook', async (req, res) => {
         await persistMute(senderId, 'unmute');
         await notifyTelegram(`🔊 AI re-enabled for <code>${senderId}</code>.`);
       }
-    } else if (text === '/active' || text === 'active') {
+    } else if (lowerMsg === '/active' || lowerMsg === 'active') {
       if (recentConversations.size === 0) {
         await notifyTelegram('No recent conversations yet.');
       } else {
         const lines = [...recentConversations.entries()]
-          .reverse() // most recent first
+          .reverse()
           .map(([id, info]) => {
             const label = identifyLabel(id);
             let status = '';
@@ -687,9 +819,108 @@ app.post('/telegram-webhook', async (req, res) => {
               const minsLeft = Math.ceil((autoMuteUntil.get(id) - Date.now()) / 60000);
               status = ` ⏸️ auto-paused (${minsLeft}m left)`;
             }
-            return `${label}${status}\n   "${info.lastMessage.slice(0, 60)}"\n   <code>/mute ${id}</code>`;
+            return `${label}${status}\n   "${escapeTelegramHtml(info.lastMessage.slice(0, 60))}"\n   <code>/mute ${id}</code>`;
           });
         await notifyTelegram(`💬 <b>Recent conversations</b>\n\n${lines.join('\n\n')}`);
+      }
+    } else if (lowerMsg === '/batches' || lowerMsg === 'batches') {
+      let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES</b>\n--------------------------------------------\n`;
+      for (const trip of TRAVEL_ELEVEN_DATA.group_departures) {
+        batchText += `\n<b>${trip.name}</b> (<code>${trip.id}</code>):\n`;
+        if (trip.dates && trip.dates.length > 0) {
+          trip.dates.forEach(d => {
+            batchText += `  • ${d.label} (${d.status || 'Available'})\n`;
+          });
+        } else {
+          batchText += `  • No dates listed\n`;
+        }
+      }
+      batchText += `\n<i>Add/Remove batches anytime:</i>\n<code>/addbatch <trip_id> <date_label></code>\n<code>/removebatch <trip_id> <date_label></code>`;
+      await notifyTelegram(batchText);
+    } else if (lowerMsg.startsWith('/addbatch')) {
+      const parts = text.split(/\s+/);
+      if (parts.length < 3) {
+        await notifyTelegram(`⚠️ Usage: <code>/addbatch <trip_id> <date_label></code>\nExample: <code>/addbatch gumbok 15 Oct '26</code>`);
+      } else {
+        const tripId = parts[1].toLowerCase();
+        const dateLabel = parts.slice(2).join(' ');
+        const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId || t.name.toLowerCase().includes(tripId));
+        if (!trip) {
+          await notifyTelegram(`❌ Trip <code>${tripId}</code> not found! Available trip IDs: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>.`);
+        } else {
+          trip.dates.push({ label: dateLabel, status: "Available" });
+          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!`);
+        }
+      }
+    } else if (lowerMsg.startsWith('/removebatch')) {
+      const parts = text.split(/\s+/);
+      if (parts.length < 3) {
+        await notifyTelegram(`⚠️ Usage: <code>/removebatch <trip_id> <date_label></code>`);
+      } else {
+        const tripId = parts[1].toLowerCase();
+        const dateQuery = parts.slice(2).join(' ').toLowerCase();
+        const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId || t.name.toLowerCase().includes(tripId));
+        if (!trip) {
+          await notifyTelegram(`❌ Trip <code>${tripId}</code> not found.`);
+        } else {
+          const idx = trip.dates.findIndex(d => d.label.toLowerCase().includes(dateQuery));
+          if (idx === -1) {
+            await notifyTelegram(`❌ Batch matching "${dateQuery}" not found in ${trip.name}.`);
+          } else {
+            const removed = trip.dates.splice(idx, 1)[0];
+            await notifyTelegram(`🗑️ Removed batch <b>"${removed.label}"</b> from <b>${trip.name}</b>!`);
+          }
+        }
+      }
+    } else if (lowerMsg.startsWith('/lookup')) {
+      const query = text.split(/\s+/)[1];
+      if (!query) {
+        await notifyTelegram(`⚠️ Usage: <code>/lookup SENDER_ID_OR_PHONE_OR_USERNAME</code>`);
+      } else {
+        const cleanQ = query.toLowerCase().replace(/[@\s]/g, '');
+        let matchedId = null;
+
+        for (const [id, name] of senderNames.entries()) {
+          if (id === cleanQ || (name && name.toLowerCase().includes(cleanQ))) {
+            matchedId = id;
+            break;
+          }
+        }
+        if (!matchedId) {
+          const lead = dailyStats.hotLeads.find(l => l.senderId === cleanQ || l.phone.includes(cleanQ));
+          if (lead) matchedId = lead.senderId;
+        }
+        if (!matchedId) {
+          for (const id of recentConversations.keys()) {
+            if (id === cleanQ) { matchedId = id; break; }
+          }
+        }
+
+        if (!matchedId) {
+          await notifyTelegram(`❌ No records found matching <code>${query}</code>.`);
+        } else {
+          const label = identifyLabel(matchedId);
+          const phoneObj = dailyStats.hotLeads.find(l => l.senderId === matchedId);
+          const phoneStr = phoneObj ? phoneObj.phone : 'Not shared yet';
+          const isMuted = optedOut.has(matchedId) ? '🔇 Permanently Muted' : (isAutoMuted(matchedId) ? '⏸️ Auto-Paused' : '🔊 Active AI');
+          const isContacted = contactedLeads.has(matchedId) ? '✅ Yes' : '❌ No';
+          const isWon = dealWonLeads.has(matchedId) ? '🏆 Yes' : '❌ No';
+
+          const history = conversationHistory.get(matchedId) || [];
+          let historyText = history.length > 0
+            ? history.map(h => `• <b>${h.role === 'user' ? 'User' : 'Bot'}:</b> "${escapeTelegramHtml(h.text.slice(0, 80))}"`).join('\n')
+            : 'No stored turn history.';
+
+          await notifyTelegram(
+            `🔍 <b>CUSTOMER LOOKUP: ${label}</b>\n--------------------------------------------\n` +
+            `📱 <b>Phone:</b> <code>${phoneStr}</code>\n` +
+            `🤖 <b>AI Status:</b> ${isMuted}\n` +
+            `✅ <b>Contacted:</b> ${isContacted}\n` +
+            `🏆 <b>Deal Won:</b> ${isWon}\n\n` +
+            `💬 <b>RECENT MESSAGES:</b>\n${historyText}\n\n` +
+            `To reply: reply to this msg with <code>reply: text</code>`
+          );
+        }
       }
     }
   } catch (err) {
