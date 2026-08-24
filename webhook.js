@@ -68,10 +68,17 @@ async function loadMutedFromSheet() {
   if (!SHEET_WEBAPP_URL) return;
   try {
     const res = await fetch(`${SHEET_WEBAPP_URL}?listMuted=1`, { redirect: 'follow' });
-    const data = await res.json();
-    (data.muted || []).forEach((id) => optedOut.add(id));
-    saveMutedToFile();
-    console.log(`✅ Restored ${(data.muted || []).length} muted user(s) from sheet after restart.`);
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      console.warn(`⚠️ Google Sheet listMuted returned HTML/non-JSON response (Status: ${res.status}). Using local disk cache muted_users.json.`);
+      return;
+    }
+    const data = JSON.parse(text);
+    if (data && Array.isArray(data.muted)) {
+      data.muted.forEach((id) => optedOut.add(id));
+      saveMutedToFile();
+      console.log(`✅ Restored ${data.muted.length} muted user(s) from sheet after restart.`);
+    }
   } catch (err) {
     console.error('❌ Failed to load muted list from sheet:', err.message);
   }
