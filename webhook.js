@@ -11,6 +11,10 @@ const cron = require('node-cron');
 const app = express();
 app.use(express.json());
 
+const fs = require('fs');
+const path = require('path');
+const MUTE_FILE = path.join(__dirname, 'muted_users.json');
+
 const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN;
 const IG_ACCESS_TOKEN = process.env.IG_ACCESS_TOKEN;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -19,7 +23,33 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SHEET_WEBAPP_URL = process.env.SHEET_WEBAPP_URL;
 const SHEET_SECRET = process.env.SHEET_SECRET;
 
+function saveMutedToFile() {
+  try {
+    fs.writeFileSync(MUTE_FILE, JSON.stringify([...optedOut]), 'utf8');
+  } catch (err) {
+    console.error('❌ Failed to save muted users to file:', err.message);
+  }
+}
+
+function loadMutedFromFile() {
+  try {
+    if (fs.existsSync(MUTE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(MUTE_FILE, 'utf8'));
+      if (Array.isArray(data)) {
+        data.forEach(id => optedOut.add(id));
+        console.log(`✅ Loaded ${data.length} permanently muted user(s) from local file.`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Failed to load muted users from file:', err.message);
+  }
+}
+
 async function persistMute(senderId, action) {
+  if (action === 'mute') optedOut.add(senderId);
+  else if (action === 'unmute') optedOut.delete(senderId);
+  saveMutedToFile();
+
   if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
   try {
     await fetch(SHEET_WEBAPP_URL, {
@@ -34,11 +64,13 @@ async function persistMute(senderId, action) {
 }
 
 async function loadMutedFromSheet() {
+  loadMutedFromFile();
   if (!SHEET_WEBAPP_URL) return;
   try {
     const res = await fetch(`${SHEET_WEBAPP_URL}?listMuted=1`, { redirect: 'follow' });
     const data = await res.json();
     (data.muted || []).forEach((id) => optedOut.add(id));
+    saveMutedToFile();
     console.log(`✅ Restored ${(data.muted || []).length} muted user(s) from sheet after restart.`);
   } catch (err) {
     console.error('❌ Failed to load muted list from sheet:', err.message);
@@ -257,6 +289,21 @@ const TRAVEL_ELEVEN_DATA = {
         { label: "23 Sep '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
+    },
+    {
+      id: "bhutan",
+      name: "Bhutan Expedition - Land of the Thunder Dragon",
+      location: "Bhutan (Thimphu, Punakha, Paro, Phobjikha)",
+      duration: "8D/7N",
+      groupSize: "6-15 people",
+      tags: ["International Expedition", "Tiger's Nest Hike", "Thimphu Tshechu Festival", "Phobjikha Glacial Valley", "Flights Included"],
+      description: "An 8-day Himalayan journey through Bhutan's sacred valleys, ancient dzongs, Phobjikha glacial meadows, Thimphu Tshechu Festival, and the iconic cliffside Tiger's Nest Monastery.",
+      price: "₹49,999/- (Special Introductory Offer - Flights & Full Package Included)",
+      dates: [
+        { label: "19 Sep '26 (Thimphu Tshechu Festival Special)", status: "Fast Filling" },
+        { label: "17 Oct '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/bhutan"
     }
   ]
 };
@@ -315,6 +362,7 @@ function findTrip(query) {
     if ((q.includes('yulla') || q.includes('krishna')) && id === 'yulla') return true;
     if ((q.includes('workation') || q.includes('himachal') || q.includes('work')) && id === 'workation') return true;
     if ((q.includes('madhyamaheshwar') || q.includes('mm') || q.includes('kedar')) && id === 'madhyamaheshwar') return true;
+    if ((q.includes('bhutan') || q.includes('taktsang') || q.includes('tiger') || q.includes('tshechu') || q.includes('thimphu') || q.includes('paro') || q.includes('punakha')) && id === 'bhutan') return true;
     return false;
   });
 }
@@ -642,6 +690,7 @@ if (!senderId || !messageText) continue;
           inlineButtons.push([
             { text: "✅ Contacted", callback_data: `cb_cnt_${senderId}` },
             { text: "⏸️ Mute 24h", callback_data: `cb_m24_${senderId}` },
+            { text: "🔇 Perma Mute", callback_data: `cb_perm_${senderId}` },
             { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
           ]);
 
@@ -686,6 +735,7 @@ if (!senderId || !messageText) continue;
           inlineButtons.push([
             { text: "✅ Contacted", callback_data: `cb_cnt_${senderId}` },
             { text: "⏸️ Mute 24h", callback_data: `cb_m24_${senderId}` },
+            { text: "🔇 Perma Mute", callback_data: `cb_perm_${senderId}` },
             { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
           ]);
 
@@ -736,6 +786,12 @@ app.post('/telegram-webhook', async (req, res) => {
         autoMuteUntil.set(senderId, Date.now() + 24 * 60 * 60 * 1000);
         await answerTelegramCallback(cbId, '⏸️ AI muted for 24 hours!');
         await notifyTelegram(`⏸️ AI paused for 24h for user <code>${senderId}</code>.`);
+      } else if (data.startsWith('cb_perm_')) {
+        const senderId = data.replace('cb_perm_', '');
+        optedOut.add(senderId);
+        await persistMute(senderId, 'mute');
+        await answerTelegramCallback(cbId, '🔇 Permanently Muted!');
+        await notifyTelegram(`🔇 AI permanently muted for user <code>${senderId}</code> (saved to disk & sheet).`);
       } else if (data.startsWith('cb_won_')) {
         const senderId = data.replace('cb_won_', '');
         contactedLeads.add(senderId);
@@ -757,8 +813,11 @@ app.post('/telegram-webhook', async (req, res) => {
       return;
     }
 
+    const rawText = messageObj.text?.trim() || '';
+    if (!rawText) return;
+
     // Strip bot handle from command (e.g. /addbatch@MyBot -> /addbatch)
-    let cleanText = text.replace(/^(\/[a-zA-Z0-9_]+)@[a-zA-Z0-9_]+/i, '$1');
+    let cleanText = rawText.replace(/^(\/[a-zA-Z0-9_]+)@[a-zA-Z0-9_]+/i, '$1');
     const lowerMsg = cleanText.toLowerCase().trim();
 
     // A. DIRECT INSTAGRAM DM REPLY FROM TELEGRAM
@@ -841,19 +900,47 @@ app.post('/telegram-webhook', async (req, res) => {
           });
         await notifyTelegram(`💬 <b>Recent conversations</b>\n\n${lines.join('\n\n')}`);
       }
-    } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list') {
-      let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES</b>\n--------------------------------------------\n`;
+    } else if (lowerMsg === '/history' || lowerMsg === 'history' || lowerMsg === '/recent' || lowerMsg === 'recent') {
+      if (recentConversations.size === 0) {
+        await notifyTelegram('No recent conversations recorded yet.');
+      } else {
+        let textOut = `💬 <b>RECENT CONVERSATIONS HISTORY</b>\n--------------------------------------------\n\n`;
+        const recentEntries = [...recentConversations.entries()].reverse().slice(0, 10);
+        for (const [id, info] of recentEntries) {
+          const label = identifyLabel(id);
+          const history = conversationHistory.get(id) || [];
+          let status = optedOut.has(id) ? ' 🔇 MUTED' : (isAutoMuted(id) ? ' ⏸️ AUTO-PAUSED' : ' 🔊 ACTIVE');
+          textOut += `👤 <b>${label}</b> (${status})\n`;
+          if (history.length > 0) {
+            history.slice(-3).forEach(h => {
+              textOut += `  • <b>${h.role === 'user' ? 'User' : 'AI'}:</b> "${escapeTelegramHtml(h.text.slice(0, 70))}"\n`;
+            });
+          } else {
+            textOut += `  • Last Msg: "${escapeTelegramHtml(info.lastMessage.slice(0, 70))}"\n`;
+          }
+          textOut += `  <i>To lookup: <code>/lookup ${id}</code> | To mute: <code>/mute ${id}</code></i>\n\n`;
+        }
+        await notifyTelegram(textOut);
+      }
+    } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list' || lowerMsg === '/batch') {
+      let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES (${TRAVEL_ELEVEN_DATA.group_departures.length} TRIPS)</b>\n--------------------------------------------\n`;
       for (const trip of TRAVEL_ELEVEN_DATA.group_departures) {
-        batchText += `\n<b>${trip.name}</b> (ID: <code>${trip.id}</code>):\n`;
+        batchText += `\n<b>${trip.name}</b> (ID: <code>${trip.id}</code>)\n`;
+        batchText += `  • <b>Duration:</b> ${trip.duration}\n`;
+        batchText += `  • <b>Price:</b> ${trip.price}\n`;
+        batchText += `  • <b>Batches:</b>\n`;
         if (trip.dates && trip.dates.length > 0) {
           trip.dates.forEach(d => {
-            batchText += `  • ${d.label} (${d.status || 'Available'})\n`;
+            batchText += `    - ${d.label} (${d.status || 'Available'})\n`;
           });
         } else {
-          batchText += `  • No dates listed\n`;
+          batchText += `    - No dates listed\n`;
         }
       }
-      batchText += `\n<i>Add/Remove batches anytime:</i>\n<code>/addbatch <trip_id> <date_label></code>\n<code>/removebatch <trip_id> <date_label></code>`;
+      batchText += `\n--------------------------------------------\n` +
+        `<i>Add/Remove batches anytime:</i>\n` +
+        `<code>/addbatch <trip_id> <date_label></code>\n` +
+        `<code>/removebatch <trip_id> <date_label></code>`;
       await notifyTelegram(batchText);
     } else if (lowerMsg.startsWith('/addbatch') || lowerMsg.startsWith('addbatch') || lowerMsg.startsWith('/add_batch') || lowerMsg.startsWith('add batch')) {
       const parts = cleanText.split(/\s+/);
