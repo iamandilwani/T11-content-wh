@@ -961,8 +961,8 @@ app.post('/telegram-webhook', async (req, res) => {
       }
       batchText += `\n--------------------------------------------\n` +
         `<i>Add/Remove batches anytime:</i>\n` +
-        `<code>/addbatch <trip_id> <date_label></code>\n` +
-        `<code>/removebatch <trip_id> <date_label></code>`;
+        `<code>/addbatch [trip_id] [date_label]</code>\n` +
+        `<code>/removebatch [trip_id] [date_label]</code>`;
       await notifyTelegram(batchText);
     } else if (lowerMsg.startsWith('/addbatch') || lowerMsg.startsWith('addbatch') || lowerMsg.startsWith('/add_batch') || lowerMsg.startsWith('add batch')) {
       const parts = cleanText.split(/\s+/);
@@ -971,13 +971,13 @@ app.post('/telegram-webhook', async (req, res) => {
         : parts.slice(1);
 
       if (args.length < 2) {
-        await notifyTelegram(`⚠️ Usage: <code>/addbatch <trip_id> <date_label></code>\nExample: <code>/addbatch gumbok 15 Oct '26</code>`);
+        await notifyTelegram(`⚠️ Usage: <code>/addbatch [trip_id] [date_label]</code>\nExample: <code>/addbatch gumbok 15 Oct '26</code>`);
       } else {
         const tripQuery = args[0];
         const dateLabel = args.slice(1).join(' ');
         const trip = findTrip(tripQuery);
         if (!trip) {
-          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>, <code>bhutan</code>.`);
         } else {
           trip.dates.push({ label: dateLabel, status: "Available" });
           await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n<i>AI will now share this date in upcoming DMs.</i>`);
@@ -990,7 +990,7 @@ app.post('/telegram-webhook', async (req, res) => {
         : parts.slice(1);
 
       if (args.length < 2) {
-        await notifyTelegram(`⚠️ Usage: <code>/removebatch <trip_id> <date_label></code>\nExample: <code>/removebatch gumbok 15 Oct</code>`);
+        await notifyTelegram(`⚠️ Usage: <code>/removebatch [trip_id] [date_label]</code>\nExample: <code>/removebatch gumbok 15 Oct</code>`);
       } else {
         const tripQuery = args[0];
         const dateQuery = args.slice(1).join(' ').toLowerCase();
@@ -1113,6 +1113,27 @@ app.get('/setup-telegram', async (req, res) => {
       instructions: data.ok 
         ? "✅ Telegram Webhook successfully registered! Your Telegram bot will now respond to /batches and all commands." 
         : "❌ Telegram Webhook registration failed. Check TELEGRAM_BOT_TOKEN."
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/debug-telegram', async (req, res) => {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return res.status(400).json({ error: 'TELEGRAM_BOT_TOKEN environment variable is missing' });
+  }
+  try {
+    const meRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
+    const meData = await meRes.json();
+
+    const hookRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo`);
+    const hookData = await hookRes.json();
+
+    res.json({
+      configuredChatId: TELEGRAM_CHAT_ID || 'NOT_SET',
+      botInfo: meData.result || meData,
+      webhookInfo: hookData.result || hookData,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
