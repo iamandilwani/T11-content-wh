@@ -487,13 +487,13 @@ const contactedLeads = new Set();
 const dealWonLeads = new Set();
 const lastAlertSenderByMsgId = new Map(); // msg_id -> senderId
 
-async function notifyTelegram(text, replyMarkup = null) {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.warn('⚠️ TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is missing in environment variables!');
+async function notifyTelegramToChat(targetChatId, text, replyMarkup = null) {
+  if (!TELEGRAM_BOT_TOKEN || !targetChatId) {
+    console.warn('⚠️ TELEGRAM_BOT_TOKEN or targetChatId is missing!');
     return null;
   }
   try {
-    const payload = { chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'HTML' };
+    const payload = { chat_id: targetChatId, text, parse_mode: 'HTML' };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -507,9 +507,13 @@ async function notifyTelegram(text, replyMarkup = null) {
     }
     return data?.result?.message_id || null;
   } catch (err) {
-    console.error('❌ Failed to notify Telegram:', err.message);
+    console.error('❌ Failed to notify Telegram chat:', err.message);
     return null;
   }
+}
+
+async function notifyTelegram(text, replyMarkup = null) {
+  return notifyTelegramToChat(TELEGRAM_CHAT_ID, text, replyMarkup);
 }
 
 async function answerTelegramCallback(callbackQueryId, text = '') {
@@ -814,8 +818,20 @@ app.post('/telegram-webhook', async (req, res) => {
     if (!messageObj) return;
 
     const incomingChatId = messageObj.chat?.id?.toString();
-    if (!incomingChatId || incomingChatId !== TELEGRAM_CHAT_ID?.toString()) {
-      console.log(`⚠️ Ignored Telegram command from unauthorized chat id: ${incomingChatId}`);
+    const authorizedChatIds = TELEGRAM_CHAT_ID ? TELEGRAM_CHAT_ID.split(',').map(id => id.trim()) : [];
+    const isAuthorized = !TELEGRAM_CHAT_ID || authorizedChatIds.includes(incomingChatId);
+
+    if (!incomingChatId || !isAuthorized) {
+      console.log(`⚠️ Ignored Telegram command from unauthorized chat id: ${incomingChatId} (Configured TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID})`);
+      if (incomingChatId) {
+        await notifyTelegramToChat(
+          incomingChatId,
+          `⚠️ <b>Unauthorized Telegram Chat ID!</b>\n\n` +
+          `Your Telegram Chat ID: <code>${incomingChatId}</code>\n` +
+          `Server TELEGRAM_CHAT_ID: <code>${TELEGRAM_CHAT_ID || 'NOT SET'}</code>\n\n` +
+          `👉 <b>To fix this:</b> Update <code>TELEGRAM_CHAT_ID</code> in Render Environment Variables to <code>${incomingChatId}</code>!`
+        );
+      }
       return;
     }
 
@@ -1076,6 +1092,31 @@ app.get('/privacy', (req, res) => {
       </body>
     </html>
   `);
+});
+
+app.get('/setup-telegram', async (req, res) => {
+  if (!TELEGRAM_BOT_TOKEN) {
+    return res.status(400).send('❌ TELEGRAM_BOT_TOKEN environment variable is missing.');
+  }
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.get('host');
+  const baseUrl = req.query.url || `${protocol}://${host}`;
+  const webhookUrl = `${baseUrl.replace(/\/$/, '')}/telegram-webhook`;
+
+  try {
+    const apiRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+    const data = await apiRes.json();
+    res.json({
+      success: data.ok,
+      registeredWebhookUrl: webhookUrl,
+      telegramResponse: data,
+      instructions: data.ok 
+        ? "✅ Telegram Webhook successfully registered! Your Telegram bot will now respond to /batches and all commands." 
+        : "❌ Telegram Webhook registration failed. Check TELEGRAM_BOT_TOKEN."
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/', (req, res) => {
