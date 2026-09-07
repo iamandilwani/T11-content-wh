@@ -290,10 +290,9 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
       price: "₹9,999/-",
       dates: [
-        { label: "02 Sep '26", status: "Available" },
-        { label: "09 Sep '26", status: "Available" },
         { label: "16 Sep '26", status: "Available" },
-        { label: "23 Sep '26", status: "Available" }
+        { label: "23 Sep '26", status: "Available" },
+        { label: "30 Sep '26 (Fast Filling)", status: "Fast Filling" }
       ],
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
     },
@@ -332,7 +331,7 @@ TONE & CHAT STYLE — CRITICAL HUMAN RULES:
 
 CONVERSATION LOGIC:
 1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on dates and vibe.
-2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation, Madhyamaheshwar):
+2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation, Madhyamaheshwar, Bhutan):
    - Mention duration and upcoming dates naturally.
    - Direct them to "Request Invite" on website ONLY when they show interest.
 3. CUSTOMIZED TRIPS / OTHER LOCATIONS (Kashmir, Spiti, Bali, etc.):
@@ -368,7 +367,7 @@ function findTrip(query) {
     if ((q.includes('gomboc') || q.includes('gombok') || q.includes('zanskar') || q.includes('jispa')) && id === 'gumbok') return true;
     if ((q.includes('yulla') || q.includes('krishna')) && id === 'yulla') return true;
     if ((q.includes('workation') || q.includes('himachal') || q.includes('work')) && id === 'workation') return true;
-    if ((q.includes('madhyamaheshwar') || q.includes('mm') || q.includes('kedar')) && id === 'madhyamaheshwar') return true;
+    if ((q.includes('madhyamaheshwar') || q.includes('madhyamaheswar') || q.includes('madhya') || q.includes('maheshwar') || q.includes('maheswar') || q.includes('mm') || q.includes('kedar')) && id === 'madhyamaheshwar') return true;
     if ((q.includes('bhutan') || q.includes('taktsang') || q.includes('tiger') || q.includes('tshechu') || q.includes('thimphu') || q.includes('paro') || q.includes('punakha')) && id === 'bhutan') return true;
     return false;
   });
