@@ -23,6 +23,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SHEET_WEBAPP_URL = process.env.SHEET_WEBAPP_URL;
 const SHEET_SECRET = process.env.SHEET_SECRET;
 
+const BATCHES_FILE = path.join(__dirname, 'custom_batches.json');
+
 function saveMutedToFile() {
   try {
     fs.writeFileSync(MUTE_FILE, JSON.stringify([...optedOut]), 'utf8');
@@ -42,6 +44,38 @@ function loadMutedFromFile() {
     }
   } catch (err) {
     console.error('❌ Failed to load muted users from file:', err.message);
+  }
+}
+
+function saveBatchesToFile() {
+  try {
+    const batchesData = {};
+    TRAVEL_ELEVEN_DATA.group_departures.forEach(trip => {
+      batchesData[trip.id] = trip.dates;
+    });
+    fs.writeFileSync(BATCHES_FILE, JSON.stringify(batchesData, null, 2), 'utf8');
+    console.log('✅ Dynamic trip batches saved to file.');
+  } catch (err) {
+    console.error('❌ Failed to save batches to file:', err.message);
+  }
+}
+
+function loadBatchesFromFile() {
+  try {
+    if (fs.existsSync(BATCHES_FILE)) {
+      const batchesData = JSON.parse(fs.readFileSync(BATCHES_FILE, 'utf8'));
+      if (batchesData && typeof batchesData === 'object') {
+        Object.keys(batchesData).forEach(tripId => {
+          const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId);
+          if (trip && Array.isArray(batchesData[tripId])) {
+            trip.dates = batchesData[tripId];
+          }
+        });
+        console.log('✅ Restored dynamic trip batches from local file.');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Failed to load batches from file:', err.message);
   }
 }
 
@@ -65,6 +99,7 @@ async function persistMute(senderId, action) {
 
 async function loadMutedFromSheet() {
   loadMutedFromFile();
+  loadBatchesFromFile();
   if (!SHEET_WEBAPP_URL) return;
   try {
     const res = await fetch(`${SHEET_WEBAPP_URL}?listMuted=1`, { redirect: 'follow' });
@@ -329,19 +364,46 @@ TONE & CHAT STYLE — CRITICAL HUMAN RULES:
 - FORMATTING:
   - Break thoughts into separate short text lines using line breaks (\n). Never send one dense block of text.
 
-CONVERSATION LOGIC:
-1. PRICING STRICT RULE: ONLY share price details if explicitly asked (e.g. "cost?", "price?", "budget?"). Otherwise, focus on dates and vibe.
-2. GROUP DEPARTURES (Gumbok Rangan, Yulla Kanda, Workation, Madhyamaheshwar, Bhutan):
-   - Mention duration and upcoming dates naturally.
-   - Direct them to "Request Invite" on website ONLY when they show interest.
-3. CUSTOMIZED TRIPS / OTHER LOCATIONS (Kashmir, Spiti, Bali, etc.):
-   - Confirm we curate custom offbeat trips. Ask for travel dates & group size briefly.
-4. SAFETY & REASSURANCE:
-   - Answer reassurance questions (solo female safety, weather) simply and warmly without pushiness.
+TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
 
-ITINERARY LINK - STRICT RULE:
-- Do NOT send the website link in every reply.
-- ONLY send the link if explicitly asked (e.g. "send link", "itinerary link", "details?") or when requested. For general queries, share dates/vibe and ask: "Want me to send the full itinerary link?"
+1. CUSTOMER STARTS CONVERSATION:
+   - Identify which trip the customer is asking about from their message.
+   - If the trip is clear, do NOT ask them which trip. Answer their question naturally.
+
+2. CUSTOMER ASKS FOR DETAILS:
+   - If they ask for details, provide basic relevant info: Trip Name, Upcoming Departure Date, Duration, Price.
+   - Then ask ONE simple qualifying question:
+     "Are you planning to join solo or with someone?"
+     OR:
+     "Are you specifically looking for this upcoming departure?"
+   - NEVER ask both questions together.
+
+3. CUSTOMER ASKS FOR ITINERARY:
+   - Send the itinerary link IMMEDIATELY. Do NOT force them to answer questions before receiving it.
+   - After sending the itinerary link, ask ONE relevant question if appropriate:
+     "Are you planning for this upcoming departure?"
+
+4. CUSTOMER ASKS FOR PRICE:
+   - Give the current price immediately.
+   - Then ask ONE natural qualifying question: "Are you planning to join solo or with someone?"
+
+5. WARM LEADS (Normal Interest):
+   - Examples: "Looks good", "Sounds good", "Tell me more", "Is the trek difficult?", "What's included?", "How is the stay?", "Can I join solo?", "Let me check with my friends".
+   - Treat these as WARM leads. Continue answering their questions naturally. Do NOT act like a booking bot.
+
+6. HOT LEADS (Clear Buying Intent):
+   - Examples: "I want to book", "How do I book?", "I want to join", "How can I confirm?", "Send payment details", "Can I pay?", "Reserve my seat", "Are seats available?", "How many seats are left?", "Can someone call me?", "We are 2 people and want to join", "This date works for me, how do I proceed?", "I want to go ahead".
+   - Treat these as HOT leads.
+   - Say naturally: "Perfect. I'll have someone from the Travel Eleven team connect with you."
+   - Hand the conversation over to the team. Do not ask unnecessary questions after detecting a HOT lead.
+
+7. IMPORTANT RULES:
+   - Asking for itinerary alone is NOT a HOT lead.
+   - Asking for price alone is NOT a HOT lead.
+   - Saying "interested" alone is NOT necessarily a HOT lead.
+   - HOT means the customer is moving towards actually joining, booking, paying, confirming, checking availability, or speaking with the team.
+   - Don't follow a rigid questionnaire. Ask only questions that are useful based on what the customer has already said.
+   - Never repeat information the customer has already provided.
 
 UPCOMING BATCHES ONLY RULE - CRITICAL:
 - Today's current date is dynamically provided in the prompt context.
@@ -662,34 +724,41 @@ if (!senderId || !messageText) continue;
         const reply = isFirstContact ? DISCLOSURE + generated : generated;
         await sendInstagramReply(senderId, reply);
 
-        // --- LEAD CATEGORIZATION ---
+        // --- LEAD CATEGORIZATION (TRAVEL ELEVEN LEAD FLOW) ---
         dailyStats.totalInquiries++;
         uniqueUsersToday.add(senderId);
 
         const phoneMatch = messageText.match(/(?:\+?91[\s-]*)?[6-9]\d{4}[\s-]*\d{5}\b/) || messageText.match(/\b[6-9]\d{9}\b/);
-        const highIntentKeywords = ['price', 'cost', 'dates', 'book', 'how to join', 'itinerary', 'safe', 'workation', 'yulla', 'gumbok', 'gomboc', 'zanskar', 'jispa'];
-        const isHighIntent = highIntentKeywords.some(kw => lowerMsg.includes(kw));
+        const hotKeywords = [
+          'how to book', 'want to book', 'i want to book', 'how do i book', 'book slot',
+          'reserve seat', 'confirm seat', 'confirm booking', 'payment details', 'how to pay',
+          'can i pay', 'send payment', 'how to join', 'want to join', 'i want to join',
+          'how to proceed', 'seats available', 'are seats available', 'how many seats',
+          'call me', 'can someone call', 'want to go ahead', 'going ahead', 'reserve my seat'
+        ];
+        const isHotIntent = hotKeywords.some(kw => lowerMsg.includes(kw));
+        const isHotLead = phoneMatch || isHotIntent;
 
-        if (phoneMatch) {
-          const phone = phoneMatch[0];
+        if (isHotLead) {
+          const phone = phoneMatch ? phoneMatch[0] : '';
           dailyStats.hotLeads.push({ senderId, text: messageText, phone });
 
           if (!loggedHotToSheet.has(senderId)) {
             loggedHotToSheet.add(senderId);
-            await logToSheet('hot', plainLabel(senderId), phone, messageText);
+            await logToSheet('hot', plainLabel(senderId), phone || 'N/A', messageText);
           }
 
-          // Pause AI for this person so it doesn't double-message while your
-          // team follows up. Auto-resumes after the window if nobody manually
-          // takes over with /mute.
+          // Auto-pause AI for this traveler so the human team can take over seamlessly
           autoMuteUntil.set(senderId, Date.now() + AUTO_MUTE_DURATION_MS);
 
-          const cleanDigits = phone.replace(/\D/g, '');
           const inlineButtons = [];
           const row1 = [];
-          if (cleanDigits.length >= 10) {
-            const waNumber = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
-            row1.push({ text: `📲 WhatsApp ${phone}`, url: `https://wa.me/${waNumber}` });
+          if (phone) {
+            const cleanDigits = phone.replace(/\D/g, '');
+            if (cleanDigits.length >= 10) {
+              const waNumber = cleanDigits.length === 10 ? `91${cleanDigits}` : cleanDigits;
+              row1.push({ text: `📲 WhatsApp ${phone}`, url: `https://wa.me/${waNumber}` });
+            }
           }
           const username = senderNames.get(senderId);
           if (username) {
@@ -704,12 +773,13 @@ if (!senderId || !messageText) continue;
             { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
           ]);
 
+          const reasonText = phoneMatch ? `Shared Phone Number (<code>${phone}</code>)` : `Clear Buying Intent ("${escapeTelegramHtml(messageText)}")`;
           const msgId = await notifyTelegram(
             `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
-            `<b>Phone:</b> <code>${phone}</code>\n` +
             `<b>From:</b> ${label}\n` +
-            `<b>Message:</b> "${escapeTelegramHtml(messageText)}"\n\n` +
-            `⚡ <i>Call or WhatsApp them right now!</i>\n` +
+            `<b>Reason:</b> ${reasonText}\n` +
+            `<b>Latest Message:</b> "${escapeTelegramHtml(messageText)}"\n\n` +
+            `⚡ <i>Handing over to Travel Eleven team!</i>\n` +
             `AI auto-paused 45m. Reply to this msg with <code>reply: text</code> to reply directly on IG DM!`,
             { inline_keyboard: inlineButtons }
           );
@@ -724,42 +794,14 @@ if (!senderId || !messageText) continue;
               const currentLabel = identifyLabel(leadId);
               await notifyTelegram(
                 `⚠️ <b>UNCONTACTED HOT LEAD REMINDER!</b>\n\n` +
-                `Hot Lead ${currentLabel} (Phone: <code>${leadPhone}</code>) was received 30 mins ago and hasn't been marked as contacted yet!\n\n` +
-                `⚡ <i>Please call or WhatsApp them now!</i>`
+                `Hot Lead ${currentLabel} (Info: <code>${leadPhone || 'No Phone'}</code>) was received 30 mins ago and hasn't been marked as contacted yet!\n\n` +
+                `⚡ <i>Please connect with them now!</i>`
               );
             }
           }, 30 * 60 * 1000);
-        } else if (isHighIntent) {
-          dailyStats.followUpLeads.push({ senderId, text: messageText });
-
-          if (!loggedFollowUpToSheet.has(senderId)) {
-            loggedFollowUpToSheet.add(senderId);
-            await logToSheet('follow-up', plainLabel(senderId), '', messageText);
-          }
-
-          const username = senderNames.get(senderId);
-          const inlineButtons = [];
-          if (username) {
-            inlineButtons.push([{ text: `📸 Open Instagram @${username}`, url: `https://instagram.com/${username}` }]);
-          }
-          inlineButtons.push([
-            { text: "✅ Contacted", callback_data: `cb_cnt_${senderId}` },
-            { text: "⏸️ Mute 24h", callback_data: `cb_m24_${senderId}` },
-            { text: "🔇 Perma Mute", callback_data: `cb_perm_${senderId}` },
-            { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
-          ]);
-
-          const msgId = await notifyTelegram(
-            `⏳ <b>New DM</b>\nFrom: ${label}\nMessage: "${escapeTelegramHtml(messageText.slice(0, 200))}"\n` +
-            `Reply to this msg with <code>reply: text</code> to reply directly on IG DM!`,
-            { inline_keyboard: inlineButtons }
-          );
-
-          if (msgId) lastAlertSenderByMsgId.set(msgId.toString(), senderId);
         } else {
-          dailyStats.casualCount++;
-          // Casual chats aren't logged to the sheet or pinged to Telegram -
-          // only hot leads and genuine follow-up interest are.
+          // Warm lead (normal interest) - tracked for daily summary, no Telegram alert to avoid spam
+          dailyStats.followUpLeads.push({ senderId, text: messageText });
         }
       }
     }
@@ -965,45 +1007,54 @@ app.post('/telegram-webhook', async (req, res) => {
         `<code>/removebatch [trip_id] [date_label]</code>`;
       await notifyTelegram(batchText);
     } else if (lowerMsg.startsWith('/addbatch') || lowerMsg.startsWith('addbatch') || lowerMsg.startsWith('/add_batch') || lowerMsg.startsWith('add batch')) {
-      const parts = cleanText.split(/\s+/);
-      const args = (parts[0].includes('batch') || parts[0].includes('add')) && parts.length > 1 && (parts[0].endsWith('batch') || parts[1] === 'batch')
-        ? parts.slice(lowerMsg.startsWith('add batch') ? 2 : 1)
-        : parts.slice(1);
+      const restText = cleanText.replace(/^\/?(addbatch|add_batch|add batch)\s*/i, '').trim();
+      const firstSpaceIdx = restText.search(/\s/);
 
-      if (args.length < 2) {
-        await notifyTelegram(`⚠️ Usage: <code>/addbatch [trip_id] [date_label]</code>\nExample: <code>/addbatch gumbok 15 Oct '26</code>`);
+      if (firstSpaceIdx === -1 || !restText) {
+        await notifyTelegram(`⚠️ Usage: <code>/addbatch [trip_id] [date_label]</code>\n\nExample:\n<code>/addbatch gumbok 15 Oct '26</code>\n<code>/addbatch madhyamaheshwar 30 Sep '26 (Fast Filling)</code>`);
       } else {
-        const tripQuery = args[0];
-        const dateLabel = args.slice(1).join(' ');
+        const tripQuery = restText.substring(0, firstSpaceIdx).trim();
+        const dateLabel = restText.substring(firstSpaceIdx).trim();
         const trip = findTrip(tripQuery);
+
         if (!trip) {
           await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>, <code>bhutan</code>.`);
         } else {
-          trip.dates.push({ label: dateLabel, status: "Available" });
-          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n<i>AI will now share this date in upcoming DMs.</i>`);
+          let status = "Available";
+          if (/fast filling|filling|fast/i.test(dateLabel)) {
+            status = "Fast Filling";
+          }
+          const existingIdx = trip.dates.findIndex(d => d.label.toLowerCase() === dateLabel.toLowerCase());
+          if (existingIdx !== -1) {
+            trip.dates[existingIdx] = { label: dateLabel, status };
+          } else {
+            trip.dates.push({ label: dateLabel, status });
+          }
+          saveBatchesToFile();
+          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n\n<i>Saved permanently to disk. AI will share this date in upcoming DMs.</i>`);
         }
       }
     } else if (lowerMsg.startsWith('/removebatch') || lowerMsg.startsWith('removebatch') || lowerMsg.startsWith('/remove_batch') || lowerMsg.startsWith('remove batch') || lowerMsg.startsWith('/deletebatch') || lowerMsg.startsWith('deletebatch')) {
-      const parts = cleanText.split(/\s+/);
-      const args = lowerMsg.startsWith('remove batch') || lowerMsg.startsWith('delete batch')
-        ? parts.slice(2)
-        : parts.slice(1);
+      const restText = cleanText.replace(/^\/?(removebatch|remove_batch|remove batch|deletebatch|delete batch)\s*/i, '').trim();
+      const firstSpaceIdx = restText.search(/\s/);
 
-      if (args.length < 2) {
-        await notifyTelegram(`⚠️ Usage: <code>/removebatch [trip_id] [date_label]</code>\nExample: <code>/removebatch gumbok 15 Oct</code>`);
+      if (firstSpaceIdx === -1 || !restText) {
+        await notifyTelegram(`⚠️ Usage: <code>/removebatch [trip_id] [date_label]</code>\n\nExample:\n<code>/removebatch gumbok 15 Oct</code>`);
       } else {
-        const tripQuery = args[0];
-        const dateQuery = args.slice(1).join(' ').toLowerCase();
+        const tripQuery = restText.substring(0, firstSpaceIdx).trim();
+        const dateQuery = restText.substring(firstSpaceIdx).trim().toLowerCase();
         const trip = findTrip(tripQuery);
+
         if (!trip) {
-          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>, <code>bhutan</code>.`);
         } else {
           const idx = trip.dates.findIndex(d => d.label.toLowerCase().includes(dateQuery));
           if (idx === -1) {
-            await notifyTelegram(`❌ Batch matching "${dateQuery}" not found in ${trip.name}.`);
+            await notifyTelegram(`❌ Batch matching "${dateQuery}" not found in <b>${trip.name}</b>.\nCurrent batches: ${trip.dates.map(d => d.label).join(', ')}`);
           } else {
             const removed = trip.dates.splice(idx, 1)[0];
-            await notifyTelegram(`🗑️ Removed batch <b>"${removed.label}"</b> from <b>${trip.name}</b>!`);
+            saveBatchesToFile();
+            await notifyTelegram(`🗑️ Removed batch <b>"${removed.label}"</b> from <b>${trip.name}</b>!\n\n<i>Saved permanently to disk.</i>`);
           }
         }
       }
