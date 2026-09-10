@@ -24,6 +24,8 @@ const SHEET_WEBAPP_URL = process.env.SHEET_WEBAPP_URL;
 const SHEET_SECRET = process.env.SHEET_SECRET;
 
 const BATCHES_FILE = path.join(__dirname, 'custom_batches.json');
+const HISTORY_FILE = path.join(__dirname, 'recent_conversations.json');
+const STATS_FILE = path.join(__dirname, 'daily_stats.json');
 
 function saveMutedToFile() {
   try {
@@ -44,6 +46,70 @@ function loadMutedFromFile() {
     }
   } catch (err) {
     console.error('❌ Failed to load muted users from file:', err.message);
+  }
+}
+
+function saveHistoryToFile() {
+  try {
+    const historyObj = {
+      senderNames: Object.fromEntries(senderNames),
+      recentConversations: Object.fromEntries(recentConversations),
+      conversationHistory: Object.fromEntries(conversationHistory)
+    };
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(historyObj, null, 2), 'utf8');
+  } catch (err) {
+    console.error('❌ Failed to save history to file:', err.message);
+  }
+}
+
+function loadHistoryFromFile() {
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const historyObj = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
+      if (historyObj.senderNames) {
+        Object.entries(historyObj.senderNames).forEach(([k, v]) => senderNames.set(k, v));
+      }
+      if (historyObj.recentConversations) {
+        Object.entries(historyObj.recentConversations).forEach(([k, v]) => recentConversations.set(k, v));
+      }
+      if (historyObj.conversationHistory) {
+        Object.entries(historyObj.conversationHistory).forEach(([k, v]) => conversationHistory.set(k, v));
+      }
+      console.log(`✅ Loaded ${recentConversations.size} recent conversation history entries from file.`);
+    }
+  } catch (err) {
+    console.error('❌ Failed to load history from file:', err.message);
+  }
+}
+
+function saveStatsToFile() {
+  try {
+    const statsObj = {
+      dailyStats,
+      uniqueUsersToday: [...uniqueUsersToday],
+      date: new Date().toISOString().split('T')[0]
+    };
+    fs.writeFileSync(STATS_FILE, JSON.stringify(statsObj, null, 2), 'utf8');
+  } catch (err) {
+    console.error('❌ Failed to save daily stats to file:', err.message);
+  }
+}
+
+function loadStatsFromFile() {
+  try {
+    if (fs.existsSync(STATS_FILE)) {
+      const statsObj = JSON.parse(fs.readFileSync(STATS_FILE, 'utf8'));
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (statsObj.date === todayStr && statsObj.dailyStats) {
+        dailyStats = statsObj.dailyStats;
+        if (Array.isArray(statsObj.uniqueUsersToday)) {
+          uniqueUsersToday = new Set(statsObj.uniqueUsersToday);
+        }
+        console.log(`✅ Restored daily stats from file for today (${todayStr}).`);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Failed to load daily stats from file:', err.message);
   }
 }
 
@@ -109,11 +175,12 @@ async function loadBatchesFromSheet() {
   try {
     const res = await fetch(`${SHEET_WEBAPP_URL}?listBatches=1`, { redirect: 'follow' });
     const text = await res.text();
-    if (!text || text.trim().startsWith('<')) {
-      console.warn('⚠️ Google Sheet listBatches returned HTML/non-JSON response. Using local disk/hardcoded batches.');
+    const trimmed = text ? text.trim() : '';
+    if (!trimmed || trimmed.startsWith('<') || !trimmed.startsWith('{')) {
+      console.warn('⚠️ Google Sheet listBatches returned non-JSON response. Using local disk/hardcoded batches.');
       return;
     }
-    const data = JSON.parse(text);
+    const data = JSON.parse(trimmed);
     if (data && data.batches && typeof data.batches === 'object') {
       Object.keys(data.batches).forEach(tripId => {
         const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId);
@@ -150,6 +217,8 @@ async function persistMute(senderId, action) {
 async function loadMutedFromSheet() {
   loadMutedFromFile();
   loadBatchesFromFile();
+  loadHistoryFromFile();
+  loadStatsFromFile();
   await loadBatchesFromSheet();
   if (!SHEET_WEBAPP_URL) return;
   try {
@@ -241,11 +310,11 @@ function plainLabel(senderId) {
 
 function trackConversation(senderId, messageText) {
   recentConversations.set(senderId, { lastMessage: messageText, lastSeen: new Date() });
-  // Keep only the most recent MAX_RECENT conversations, oldest dropped.
   if (recentConversations.size > MAX_RECENT) {
     const oldestKey = recentConversations.keys().next().value;
     recentConversations.delete(oldestKey);
   }
+  saveHistoryToFile();
 }
 
 const conversationHistory = new Map(); // senderId -> Array<{ role: 'user' | 'model', text: string }>
@@ -261,6 +330,7 @@ function recordHistory(senderId, role, text) {
   if (history.length > MAX_HISTORY_MESSAGES) {
     history.splice(0, history.length - MAX_HISTORY_MESSAGES);
   }
+  saveHistoryToFile();
 }
 
 function buildGeminiContents(senderId, currentMessageText) {
@@ -1113,7 +1183,7 @@ app.post('/telegram-webhook', async (req, res) => {
         }
       }
     } else if (lowerMsg.startsWith('/lookup')) {
-      const query = text.split(/\s+/)[1];
+      const query = cleanText.split(/\s+/)[1];
       if (!query) {
         await notifyTelegram(`⚠️ Usage: <code>/lookup SENDER_ID_OR_PHONE_OR_USERNAME</code>`);
       } else {
