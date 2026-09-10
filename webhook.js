@@ -79,6 +79,56 @@ function loadBatchesFromFile() {
   }
 }
 
+async function persistBatchesToSheet() {
+  saveBatchesToFile();
+  if (!SHEET_WEBAPP_URL || !SHEET_SECRET) return;
+  try {
+    const batchesMap = {};
+    TRAVEL_ELEVEN_DATA.group_departures.forEach(t => {
+      batchesMap[t.id] = t.dates;
+    });
+    await fetch(SHEET_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: SHEET_SECRET,
+        action: 'updateBatches',
+        batches: batchesMap
+      }),
+      redirect: 'follow',
+    });
+    console.log('✅ Synced trip batches to Google Sheets.');
+  } catch (err) {
+    console.error('❌ Failed to sync batches to Sheet:', err.message);
+  }
+}
+
+async function loadBatchesFromSheet() {
+  loadBatchesFromFile();
+  if (!SHEET_WEBAPP_URL) return;
+  try {
+    const res = await fetch(`${SHEET_WEBAPP_URL}?listBatches=1`, { redirect: 'follow' });
+    const text = await res.text();
+    if (!text || text.trim().startsWith('<')) {
+      console.warn('⚠️ Google Sheet listBatches returned HTML/non-JSON response. Using local disk/hardcoded batches.');
+      return;
+    }
+    const data = JSON.parse(text);
+    if (data && data.batches && typeof data.batches === 'object') {
+      Object.keys(data.batches).forEach(tripId => {
+        const trip = TRAVEL_ELEVEN_DATA.group_departures.find(t => t.id === tripId);
+        if (trip && Array.isArray(data.batches[tripId])) {
+          trip.dates = data.batches[tripId];
+        }
+      });
+      saveBatchesToFile();
+      console.log('✅ Restored dynamic trip batches from Google Sheets after restart.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to load batches from sheet:', err.message);
+  }
+}
+
 async function persistMute(senderId, action) {
   if (action === 'mute') optedOut.add(senderId);
   else if (action === 'unmute') optedOut.delete(senderId);
@@ -100,6 +150,7 @@ async function persistMute(senderId, action) {
 async function loadMutedFromSheet() {
   loadMutedFromFile();
   loadBatchesFromFile();
+  await loadBatchesFromSheet();
   if (!SHEET_WEBAPP_URL) return;
   try {
     const res = await fetch(`${SHEET_WEBAPP_URL}?listMuted=1`, { redirect: 'follow' });
@@ -275,7 +326,6 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
       price: "₹11,999/-",
       dates: [
-        { label: "10 Sep '26 (Stargazing Special)", status: "Available" },
         { label: "24 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" },
         { label: "08 Oct '26 (Stargazing Special)", status: "Available" }
@@ -292,7 +342,6 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
       price: "₹8,999/-",
       dates: [
-        { label: "27 Aug '26", status: "Available" },
         { label: "17 Sep '26", status: "Available" },
         { label: "24 Sep '26", status: "Available" },
         { label: "01 Oct '26", status: "Available" }
@@ -309,9 +358,8 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
       price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
       dates: [
-        { label: "20 Aug '26", status: "Available" },
-        { label: "03 Sep '26", status: "Available" },
-        { label: "17 Sep '26", status: "Available" }
+        { label: "17 Sep '26", status: "Available" },
+        { label: "01 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/workation"
     },
@@ -325,9 +373,8 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
       price: "₹9,999/-",
       dates: [
-        { label: "16 Sep '26", status: "Available" },
         { label: "23 Sep '26", status: "Available" },
-        { label: "30 Sep '26 (Gandhi Jayanti Long Weekend Special)", status: "Fast Filling" },
+        { label: "30 Sep '26 (Long Weekend Special)", status: "Fast Filling" },
         { label: "07 Oct '26", status: "Available" },
         { label: "14 Oct '26", status: "Available" }
       ],
@@ -380,7 +427,7 @@ CRITICAL INFORMATION DISCLOSURE RULES (NEVER VIOLATE):
 3. DATES & WEEKENDS MATCHING RULE:
    - When asked about dates for a specific month or weekend (e.g. "first weekend of October" or "October batch"), inspect ALL upcoming dates!
    - Include any batch that starts in or spans into that month/weekend!
-   - Note: The 30 Sep '26 batch for Madhyamaheshwar is the 4-day Gandhi Jayanti Long Weekend batch that covers Oct 1–Oct 4 (first weekend of October). ALWAYS mention 30 Sep when asked about late September or early October! NEVER say there is no batch running for early October.
+   - Note: The 30 Sep '26 batch for Madhyamaheshwar is the 4-day Long Weekend batch that covers Oct 1–Oct 4 (first weekend of October). ALWAYS mention 30 Sep when asked about late September or early October! NEVER say there is no batch running for early October.
 
 TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
 
@@ -1037,8 +1084,8 @@ app.post('/telegram-webhook', async (req, res) => {
           } else {
             trip.dates.push({ label: dateLabel, status });
           }
-          saveBatchesToFile();
-          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n\n<i>Saved permanently to disk. AI will share this date in upcoming DMs.</i>`);
+          await persistBatchesToSheet();
+          await notifyTelegram(`✅ Added batch <b>"${dateLabel}"</b> to <b>${trip.name}</b>!\n\n<i>Saved permanently to disk & Google Sheets. AI will share this date in upcoming DMs.</i>`);
         }
       }
     } else if (lowerMsg.startsWith('/removebatch') || lowerMsg.startsWith('removebatch') || lowerMsg.startsWith('/remove_batch') || lowerMsg.startsWith('remove batch') || lowerMsg.startsWith('/deletebatch') || lowerMsg.startsWith('deletebatch')) {
@@ -1060,8 +1107,8 @@ app.post('/telegram-webhook', async (req, res) => {
             await notifyTelegram(`❌ Batch matching "${dateQuery}" not found in <b>${trip.name}</b>.\nCurrent batches: ${trip.dates.map(d => d.label).join(', ')}`);
           } else {
             const removed = trip.dates.splice(idx, 1)[0];
-            saveBatchesToFile();
-            await notifyTelegram(`🗑️ Removed batch <b>"${removed.label}"</b> from <b>${trip.name}</b>!\n\n<i>Saved permanently to disk.</i>`);
+            await persistBatchesToSheet();
+            await notifyTelegram(`🗑️ Removed batch <b>"${removed.label}"</b> from <b>${trip.name}</b>!\n\n<i>Saved permanently to disk & Google Sheets.</i>`);
           }
         }
       }
