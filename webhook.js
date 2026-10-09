@@ -389,32 +389,28 @@ const TRAVEL_ELEVEN_DATA = {
     {
       id: "gumbok",
       name: "Gumbok Rangan with Jispa",
-      location: "Zanskar, India",
+      location: "Zanskar, Ladakh",
       duration: "4D/3N",
       groupSize: "6-15",
       tags: ["Stargazing", "Remote Valley"],
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
       price: "₹11,999/-",
       dates: [
-        { label: "24 Sep '26", status: "Available" },
-        { label: "01 Oct '26", status: "Available" },
-        { label: "08 Oct '26 (Stargazing Special)", status: "Available" }
+        { label: "22 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/gumbok"
     },
     {
       id: "yulla",
       name: "Yulla Kanda Trek",
-      location: "Himachal Pradesh",
+      location: "Kinnaur, Himachal Pradesh",
       duration: "3D/2N",
       groupSize: "6-15",
       tags: ["World's Highest Krishna Temple", "Trek"],
       description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
       price: "₹8,999/-",
       dates: [
-        { label: "17 Sep '26", status: "Available" },
-        { label: "24 Sep '26", status: "Available" },
-        { label: "01 Oct '26", status: "Available" }
+        { label: "22 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/yulla"
     },
@@ -428,8 +424,7 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
       price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
       dates: [
-        { label: "17 Sep '26", status: "Available" },
-        { label: "01 Oct '26", status: "Available" }
+        { label: "16 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/workation"
     },
@@ -443,10 +438,8 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
       price: "₹9,999/-",
       dates: [
-        { label: "23 Sep '26", status: "Available" },
-        { label: "30 Sep '26 (Long Weekend Special)", status: "Fast Filling" },
-        { label: "07 Oct '26", status: "Available" },
-        { label: "14 Oct '26", status: "Available" }
+        { label: "17 Oct '26", status: "Available" },
+        { label: "28 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
     },
@@ -460,8 +453,7 @@ const TRAVEL_ELEVEN_DATA = {
       description: "An 8-day Himalayan journey through Bhutan's sacred valleys, ancient dzongs, Phobjikha glacial meadows, Thimphu Tshechu Festival, and the iconic cliffside Tiger's Nest Monastery.",
       price: "₹49,999/- (Special Introductory Offer - Flights & Full Package Included)",
       dates: [
-        { label: "19 Sep '26 (Thimphu Tshechu Festival Special)", status: "Fast Filling" },
-        { label: "17 Oct '26", status: "Available" }
+        { label: "21 Nov '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/bhutan"
     }
