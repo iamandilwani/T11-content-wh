@@ -383,7 +383,34 @@ const TRAVEL_ELEVEN_DATA = {
     name: "Travel Eleven",
     tagline: "Turning your 11:11 wishes into journeys.",
     descriptor: "Offbeat. Curated. Real.",
-    whatsapp: "+91 94859 86981"
+    whatsapp: "+91 94859 86981",
+    email: "hiring@traveleleven.in"
+  },
+  hiring: {
+    email: "hiring@traveleleven.in",
+    work_mode: "Fully remote, India only",
+    open_roles: [
+      {
+        title: "Social Media Intern",
+        description: "Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus)."
+      },
+      {
+        title: "Freelance Video Editor",
+        description: "Editing Reels, travel videos, and short form content."
+      },
+      {
+        title: "Part Time Meta Ads Specialist",
+        description: "Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization."
+      }
+    ],
+    details_to_share: [
+      "The role you’re interested in",
+      "A brief introduction about yourself",
+      "Your relevant experience",
+      "Your portfolio or previous work samples, if available",
+      "Your availability and expected compensation"
+    ],
+    next_steps: "Once candidate shares these details or sends an email to hiring@traveleleven.in, the team will discuss the role and next steps."
   },
   group_departures: [
     {
@@ -424,7 +451,7 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
       price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
       dates: [
-        { label: "16 Oct '26", status: "Available" }
+        { label: "23 Oct '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/workation"
     },
@@ -520,6 +547,23 @@ TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
    - Examples: "I want to book", "How do I book?", "I want to join", "How can I confirm?", "Send payment details", "Can I pay?", "Reserve my seat", "Are seats available?", "How many seats are left?", "Can someone call me?", "We are 2 people and want to join", "This date works for me, how do I proceed?", "I want to go ahead".
    - Say naturally: "Perfect. I'll have someone from the Travel Eleven team connect with you."
    - Hand the conversation over to the team.
+
+HIRING & CAREERS / WORK WITH US (CRITICAL INSTRUCTIONS):
+When anyone asks about hiring, job openings, internships, careers, freelance work, video editing, social media management, meta ads, or joining the Travel Eleven team:
+- We are currently looking for people for the following roles:
+  1. Social Media Intern: Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus).
+  2. Freelance Video Editor: Editing Reels, travel videos, and short form content.
+  3. Part Time Meta Ads Specialist: Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.
+- Work mode: Fully remote, India only.
+- Official Email: hiring@traveleleven.in
+- Ask them to email hiring@traveleleven.in (or share directly in chat):
+  • The role they’re interested in
+  • A brief introduction about yourself
+  • Your relevant experience
+  • Your portfolio or previous work samples, if available
+  • Your availability and expected compensation
+- End warmly: "Once I have these details, we can discuss the role and next steps. Looking forward to connecting with you!"
+- CRITICAL: Never ask job applicants "planning solo or group?" and never send them trip itineraries or trek prices!
 
 UPCOMING BATCHES ONLY RULE - CRITICAL:
 - Today's current date is dynamically provided in the prompt context.
@@ -845,6 +889,9 @@ if (!senderId || !messageText) continue;
         uniqueUsersToday.add(senderId);
 
         const phoneMatch = messageText.match(/(?:\+?91[\s-]*)?[6-9]\d{4}[\s-]*\d{5}\b/) || messageText.match(/\b[6-9]\d{9}\b/);
+        const isHiringQuery = /\b(hiring|intern|internship|job|jobs|vacancy|vacancies|career|careers|resume|cv|portfolio|video editor|video editing|meta ads|social media intern)\b/i.test(lowerMsg) ||
+          (/\b(work|join)\b/i.test(lowerMsg) && /\b(team|us|you|company|agency)\b/i.test(lowerMsg));
+
         const hotKeywords = [
           'how to book', 'want to book', 'i want to book', 'how do i book', 'book slot',
           'reserve seat', 'confirm seat', 'confirm booking', 'payment details', 'how to pay',
@@ -852,7 +899,7 @@ if (!senderId || !messageText) continue;
           'how to proceed', 'seats available', 'are seats available', 'how many seats',
           'call me', 'can someone call', 'want to go ahead', 'going ahead', 'reserve my seat'
         ];
-        const isHotIntent = hotKeywords.some(kw => lowerMsg.includes(kw));
+        const isHotIntent = !isHiringQuery && hotKeywords.some(kw => lowerMsg.includes(kw));
         const isHotLead = phoneMatch || isHotIntent;
 
         if (isHotLead) {
@@ -861,10 +908,10 @@ if (!senderId || !messageText) continue;
 
           if (!loggedHotToSheet.has(senderId)) {
             loggedHotToSheet.add(senderId);
-            await logToSheet('hot', plainLabel(senderId), phone || 'N/A', messageText);
+            await logToSheet(isHiringQuery ? 'job-applicant' : 'hot', plainLabel(senderId), phone || 'N/A', messageText);
           }
 
-          // Auto-pause AI for this traveler so the human team can take over seamlessly
+          // Auto-pause AI for this traveler/applicant so the human team can take over seamlessly
           autoMuteUntil.set(senderId, Date.now() + AUTO_MUTE_DURATION_MS);
 
           const inlineButtons = [];
@@ -889,9 +936,13 @@ if (!senderId || !messageText) continue;
             { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
           ]);
 
-          const reasonText = phoneMatch ? `Shared Phone Number (<code>${phone}</code>)` : `Clear Buying Intent ("${escapeTelegramHtml(messageText)}")`;
+          const alertTitle = isHiringQuery ? `💼 <b>JOB APPLICANT / HIRING INQUIRY</b>` : `🔥 <b>HOT LEAD DETECTED!</b>`;
+          const reasonText = isHiringQuery
+            ? `Job Applicant Inquiry (${phone ? `Phone: <code>${phone}</code>` : `Message: "${escapeTelegramHtml(messageText)}"`})`
+            : (phoneMatch ? `Shared Phone Number (<code>${phone}</code>)` : `Clear Buying Intent ("${escapeTelegramHtml(messageText)}")`);
+
           const msgId = await notifyTelegram(
-            `🔥 <b>HOT LEAD DETECTED!</b>\n\n` +
+            `${alertTitle}\n\n` +
             `<b>From:</b> ${label}\n` +
             `<b>Reason:</b> ${reasonText}\n` +
             `<b>Latest Message:</b> "${escapeTelegramHtml(messageText)}"\n\n` +
@@ -1102,6 +1153,24 @@ app.post('/telegram-webhook', async (req, res) => {
         }
         await notifyTelegram(textOut);
       }
+    } else if (lowerMsg === '/hiring' || lowerMsg === 'hiring' || lowerMsg === '/jobs' || lowerMsg === 'jobs') {
+      const hiringText =
+        `💼 <b>TRAVEL ELEVEN — CURRENT OPENINGS</b>\n` +
+        `--------------------------------------------\n` +
+        `📧 <b>Official Email:</b> <code>hiring@traveleleven.in</code>\n` +
+        `🏠 <b>Work Mode:</b> Fully remote, India only\n\n` +
+        `<b>Open Roles:</b>\n` +
+        `1. <b>Social Media Intern:</b> Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus).\n` +
+        `2. <b>Freelance Video Editor:</b> Editing Reels, travel videos, and short form content.\n` +
+        `3. <b>Part Time Meta Ads Specialist:</b> Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.\n\n` +
+        `<b>Details requested from applicants:</b>\n` +
+        `• Role interested in\n` +
+        `• Brief intro about themselves\n` +
+        `• Relevant experience\n` +
+        `• Portfolio / previous work samples\n` +
+        `• Availability & expected compensation\n\n` +
+        `<i>Applicants can email directly to hiring@traveleleven.in</i>`;
+      await notifyTelegram(hiringText);
     } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list' || lowerMsg === '/batch') {
       let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES (${TRAVEL_ELEVEN_DATA.group_departures.length} TRIPS)</b>\n--------------------------------------------\n`;
       for (const trip of TRAVEL_ELEVEN_DATA.group_departures) {
