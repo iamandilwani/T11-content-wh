@@ -383,11 +383,10 @@ const TRAVEL_ELEVEN_DATA = {
     name: "Travel Eleven",
     tagline: "Turning your 11:11 wishes into journeys.",
     descriptor: "Offbeat. Curated. Real.",
-    whatsapp: "+91 94859 86981",
-    email: "hiring@traveleleven.in"
+    whatsapp: "+91 94859 86981"
   },
   hiring: {
-    email: "hiring@traveleleven.in",
+    application_form: "https://tally.so/r/Eq5P4N",
     work_mode: "Fully remote, India only",
     open_roles: [
       {
@@ -403,14 +402,7 @@ const TRAVEL_ELEVEN_DATA = {
         description: "Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization."
       }
     ],
-    details_to_share: [
-      "The role you’re interested in",
-      "A brief introduction about yourself",
-      "Your relevant experience",
-      "Your portfolio or previous work samples, if available",
-      "Your availability and expected compensation"
-    ],
-    next_steps: "Once candidate shares these details or sends an email to hiring@traveleleven.in, the team will discuss the role and next steps."
+    next_steps: "Please fill out our application form here: https://tally.so/r/Eq5P4N. Once submitted, our team will review your application and reach out for next steps."
   },
   group_departures: [
     {
@@ -422,9 +414,9 @@ const TRAVEL_ELEVEN_DATA = {
       tags: ["Stargazing", "Remote Valley"],
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
       price: "₹11,999/-",
-      dates: [
-        { label: "22 Oct '26", status: "Available" }
-      ],
+      dates: [],
+      status: "Season Over",
+      season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
       link: "https://traveleleven.in/itinerary/gumbok"
     },
     {
@@ -436,9 +428,9 @@ const TRAVEL_ELEVEN_DATA = {
       tags: ["World's Highest Krishna Temple", "Trek"],
       description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
       price: "₹8,999/-",
-      dates: [
-        { label: "22 Oct '26", status: "Available" }
-      ],
+      dates: [],
+      status: "Season Over",
+      season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
       link: "https://traveleleven.in/itinerary/yulla"
     },
     {
@@ -451,7 +443,8 @@ const TRAVEL_ELEVEN_DATA = {
       description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
       price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
       dates: [
-        { label: "23 Oct '26", status: "Available" }
+        { label: "12 Nov '26", status: "Available" },
+        { label: "19 Nov '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/workation"
     },
@@ -464,10 +457,9 @@ const TRAVEL_ELEVEN_DATA = {
       tags: ["Panch Kedar", "Chaukhamba Views"],
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
       price: "₹9,999/-",
-      dates: [
-        { label: "17 Oct '26", status: "Available" },
-        { label: "28 Oct '26", status: "Available" }
-      ],
+      dates: [],
+      status: "Season Over",
+      season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
     },
     {
@@ -480,7 +472,8 @@ const TRAVEL_ELEVEN_DATA = {
       description: "An 8-day Himalayan journey through Bhutan's sacred valleys, ancient dzongs, Phobjikha glacial meadows, Thimphu Tshechu Festival, and the iconic cliffside Tiger's Nest Monastery.",
       price: "₹49,999/- (Special Introductory Offer - Flights & Full Package Included)",
       dates: [
-        { label: "21 Nov '26", status: "Available" }
+        { label: "21 Nov '26", status: "Available" },
+        { label: "19 Dec '26", status: "Available" }
       ],
       link: "https://traveleleven.in/itinerary/bhutan"
     }
@@ -513,18 +506,26 @@ CRITICAL INFORMATION DISCLOSURE RULES (NEVER VIOLATE):
    - NEVER send the website itinerary link in the first message or voluntarily!
    - ONLY send the itinerary link if the customer EXPLICITLY asks for the itinerary (e.g., "send itinerary", "itinerary link", "details?").
 
-3. DATES & WEEKENDS MATCHING RULE:
-   - When asked about dates for a specific month or weekend (e.g. "first weekend of October" or "October batch"), inspect ALL upcoming dates!
-   - Include any batch that starts in or spans into that month/weekend!
-   - Note: The 30 Sep '26 batch for Madhyamaheshwar is the 4-day Long Weekend batch that covers Oct 1–Oct 4 (first weekend of October). ALWAYS mention 30 Sep when asked about late September or early October! NEVER say there is no batch running for early October.
+3. SEASON OVER / CLOSED LOCATIONS RULE (CRITICAL):
+   - The season is OVER for high-altitude locations:
+     • Yulla Kanda Trek (Kinnaur, Himachal)
+     • Zanskar / Gumbok Rangan (Ladakh)
+     • Madhyamaheshwar Trek (Uttarakhand)
+   - If someone asks for Yulla Kanda, Zanskar, Gumbok Rangan, Madhyamaheshwar, or any destination where fixed departures are closed:
+     - Clearly state: We don't have any fixed departures right now as the season is over for Yulla, Zanskar, and Madhyamaheshwar.
+     - Tell them: These locations will reopen next year in April / May!
+     - Let them know our ONLY active group departures right now are:
+       1. Hidden Himachal Workation: 12 Nov & 19 Nov
+       2. Bhutan Expedition: 21 Nov & 19 Dec
+   - If someone asks for customized trips (e.g. customized trip to Rajasthan, Kerala, Goa, etc.), briefly ask for their travel dates and group size.
 
 TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
 
 1. FIRST MESSAGE / CUSTOMER INQUIRY:
    - Identify which trip they are asking about from their message.
-   - Confirm we have the trip / upcoming dates naturally.
-   - Do NOT include price or itinerary link!
-   - Ask ONE simple qualifying question: "Are you planning solo or group?" (or "Are you planning solo or with someone?").
+   - If asking about Hidden Himachal or Bhutan: Confirm we have upcoming dates and ask ONE simple qualifying question: "Are you planning solo or group?" (or "Are you planning solo or with someone?").
+   - If asking about Yulla Kanda, Zanskar/Gumbok, Madhyamaheshwar, or other season-closed treks: Follow the SEASON OVER rule above (state that season is over, opens next year in April/May, and mention Hidden Himachal & Bhutan are currently active).
+   - Do NOT include price or itinerary link unless explicitly requested!
 
 2. WHEN CUSTOMER RESPONDS WITH SOLO OR GROUP:
    - Acknowledge naturally ("Got it!", "Cool!").
@@ -555,14 +556,18 @@ When anyone asks about hiring, job openings, internships, careers, freelance wor
   2. Freelance Video Editor: Editing Reels, travel videos, and short form content.
   3. Part Time Meta Ads Specialist: Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.
 - Work mode: Fully remote, India only.
-- Official Email: hiring@traveleleven.in
-- Ask them to email hiring@traveleleven.in (or share directly in chat):
-  • The role they’re interested in
-  • A brief introduction about yourself
-  • Your relevant experience
-  • Your portfolio or previous work samples, if available
-  • Your availability and expected compensation
-- End warmly: "Once I have these details, we can discuss the role and next steps. Looking forward to connecting with you!"
+- APPLICATION FORM: https://tally.so/r/Eq5P4N
+- STRICT RULE - NEVER SHARE ANY EMAIL ADDRESS: DO NOT give any email address to anyone for hiring! Under no circumstances share an email.
+- Share ONLY the application form link: https://tally.so/r/Eq5P4N
+- Response format: Briefly mention the roles and ask them to apply by filling out the form:
+  "We're currently hiring for:
+  • Social Media Intern (post creation & carousels are a plus)
+  • Freelance Video Editor
+  • Part Time Meta Ads Specialist
+  (Work mode: Fully remote, India only)
+
+  Please fill out our application form here: https://tally.so/r/Eq5P4N
+  Our team will review your application and reach out for the next steps!"
 - CRITICAL: Never ask job applicants "planning solo or group?" and never send them trip itineraries or trek prices!
 
 UPCOMING BATCHES ONLY RULE - CRITICAL:
@@ -1157,19 +1162,13 @@ app.post('/telegram-webhook', async (req, res) => {
       const hiringText =
         `💼 <b>TRAVEL ELEVEN — CURRENT OPENINGS</b>\n` +
         `--------------------------------------------\n` +
-        `📧 <b>Official Email:</b> <code>hiring@traveleleven.in</code>\n` +
+        `📝 <b>Application Form:</b> https://tally.so/r/Eq5P4N\n` +
         `🏠 <b>Work Mode:</b> Fully remote, India only\n\n` +
         `<b>Open Roles:</b>\n` +
         `1. <b>Social Media Intern:</b> Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus).\n` +
         `2. <b>Freelance Video Editor:</b> Editing Reels, travel videos, and short form content.\n` +
         `3. <b>Part Time Meta Ads Specialist:</b> Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.\n\n` +
-        `<b>Details requested from applicants:</b>\n` +
-        `• Role interested in\n` +
-        `• Brief intro about themselves\n` +
-        `• Relevant experience\n` +
-        `• Portfolio / previous work samples\n` +
-        `• Availability & expected compensation\n\n` +
-        `<i>Applicants can email directly to hiring@traveleleven.in</i>`;
+        `<i>Please apply directly via the form: https://tally.so/r/Eq5P4N</i>`;
       await notifyTelegram(hiringText);
     } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list' || lowerMsg === '/batch') {
       let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES (${TRAVEL_ELEVEN_DATA.group_departures.length} TRIPS)</b>\n--------------------------------------------\n`;
@@ -1182,6 +1181,8 @@ app.post('/telegram-webhook', async (req, res) => {
           trip.dates.forEach(d => {
             batchText += `    - ${d.label} (${d.status || 'Available'})\n`;
           });
+        } else if (trip.status === "Season Over") {
+          batchText += `    - ❄️ Season Over (Reopens April/May)\n`;
         } else {
           batchText += `    - No dates listed\n`;
         }
