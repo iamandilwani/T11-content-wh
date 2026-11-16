@@ -383,28 +383,115 @@ const TRAVEL_ELEVEN_DATA = {
     name: "Travel Eleven",
     tagline: "Turning your 11:11 wishes into journeys.",
     descriptor: "Offbeat. Curated. Real.",
-    whatsapp: "+91 94859 86981"
+    whatsapp: "+91 94859 86981",
+    email: "info@traveleleven.in"
+  },
+  partnerships: {
+    collabs_email: "collabs@traveleleven.in",
+    partners_email: "partners@traveleleven.in",
+    policy: "STRICT RULE: Never give any WhatsApp number for collaborations or partnerships. All creator / influencer collaboration proposals must be sent to collabs@traveleleven.in, and all brand / business partnership proposals must be sent to partners@traveleleven.in."
   },
   hiring: {
     application_form: "https://tally.so/r/Eq5P4N",
     work_mode: "Fully remote, India only",
     open_roles: [
       {
-        title: "Social Media Intern",
-        description: "Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus)."
-      },
-      {
-        title: "Freelance Video Editor",
-        description: "Editing Reels, travel videos, and short form content."
-      },
-      {
         title: "Part Time Meta Ads Specialist",
+        status: "Open",
         description: "Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization."
       }
     ],
+    closed_roles: [
+      {
+        title: "Social Media Intern",
+        status: "Hired / Applications Closed"
+      },
+      {
+        title: "Freelance Video Editor",
+        status: "Hired / Applications Closed"
+      }
+    ],
+    note: "Social Media Intern and Video Editor roles are ALREADY HIRED. We are currently accepting applications ONLY for Part Time Meta Ads Specialist. DO NOT share any email address for hiring under any circumstance; direct candidates exclusively to the application form.",
     next_steps: "Please fill out our application form here: https://tally.so/r/Eq5P4N. Once submitted, our team will review your application and reach out for next steps."
   },
   group_departures: [
+    {
+      id: "workation",
+      name: "Hidden Himachal",
+      location: "Himachal Pradesh",
+      duration: "3D Weekend / 7D Workation",
+      groupSize: "6-15 people",
+      tags: ["Weekend & Workation", "Himachal"],
+      description: "Offbeat mountain escape in Himachal Pradesh. Choose between a 3-day weekend trip or a 7-day slow workation with homestay stay, forest summit trek & kitchen access.",
+      price: "₹9,999/-",
+      dates: [
+        { label: "19 Nov '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/workation"
+    },
+    {
+      id: "bhutan",
+      name: "Bhutan Expedition",
+      location: "Bhutan (Thimphu, Punakha, Paro)",
+      duration: "8D/7N",
+      groupSize: "6-15 people",
+      tags: ["Bhutan with Phobjikha Valley", "Tiger's Nest Hike", "Flights Included"],
+      description: "An 8-day Himalayan journey through Bhutan's sacred valleys, ancient dzongs, Phobjikha glacial meadows, and the iconic cliffside Tiger's Nest Monastery.",
+      price: "₹42,999/-",
+      dates: [
+        { label: "21 Nov '26", status: "Available" },
+        { label: "19 Dec '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/bhutan"
+    },
+    {
+      id: "kasardevi",
+      name: "Kasar Devi & Chitai Golu",
+      location: "Almora, Uttarakhand",
+      duration: "3 Days",
+      groupSize: "6-15 people",
+      tags: ["Geomagnetic Ridge", "Spiritual", "Chitai Golu", "Jageshwar Dham"],
+      description: "Spiritual Kumaon weekend escape to the cosmic ridge of Kasar Devi, Chitai Golu Devta bell temple, and ancient Jageshwar Dham.",
+      price: "₹8,999/-",
+      dates: [
+        { label: "20 Nov '26", status: "Available" },
+        { label: "27 Nov '26", status: "Available" },
+        { label: "04 Dec '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/kasardevi"
+    },
+    {
+      id: "munsiyari",
+      name: "Munsiyari & Kasar Devi",
+      location: "Kumaon, Uttarakhand",
+      duration: "4 Days",
+      groupSize: "6-15 people",
+      tags: ["Panchachuli Range", "Birthi Falls", "Kasar Devi"],
+      description: "4-day Kumaon expedition facing the 5 snow-capped Panchachuli peaks with Birthi Falls & Kasar Devi stopover.",
+      price: "₹11,999/-",
+      dates: [
+        { label: "25 Nov '26", status: "Available" },
+        { label: "09 Dec '26", status: "Available" },
+        { label: "23 Dec '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/munsiyari"
+    },
+    {
+      id: "meghalaya",
+      name: "Unseen Meghalaya",
+      location: "Garo, Khasi & Jaintia Hills, Meghalaya",
+      duration: "8D/7N",
+      groupSize: "6-15 people",
+      tags: ["Wari Chora Canyon", "Krem Chympe", "Bamboo Trail"],
+      description: "An 8-day expedition through Meghalaya's turquoise rivers, subterranean caves, bamboo skywalks, and the hidden slot canyon of Wari Chora.",
+      price: "₹37,999/-",
+      dates: [
+        { label: "12 Dec '26", status: "Available" },
+        { label: "19 Dec '26", status: "Available" },
+        { label: "26 Dec '26", status: "Available" }
+      ],
+      link: "https://traveleleven.in/itinerary/meghalaya"
+    },
     {
       id: "gumbok",
       name: "Gumbok Rangan with Jispa",
@@ -413,7 +500,7 @@ const TRAVEL_ELEVEN_DATA = {
       groupSize: "6-15",
       tags: ["Stargazing", "Remote Valley"],
       description: "Experience the legendary God of Mountains, breathtaking Himalayan landscapes, and clear night skies for stargazing.",
-      price: "₹11,999/-",
+      price: "₹12,999/-",
       dates: [],
       status: "Season Over",
       season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
@@ -427,26 +514,11 @@ const TRAVEL_ELEVEN_DATA = {
       groupSize: "6-15",
       tags: ["World's Highest Krishna Temple", "Trek"],
       description: "Spiritual Himalayan adventure to the world's highest Krishna temple at 12,000+ ft.",
-      price: "₹8,999/-",
+      price: "₹9,999/-",
       dates: [],
       status: "Season Over",
       season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
       link: "https://traveleleven.in/itinerary/yulla"
-    },
-    {
-      id: "workation",
-      name: "Hidden Himachal Workation",
-      location: "Himachal Pradesh",
-      duration: "3 Days (Weekend) / 7 Days (Workation)",
-      groupSize: "6-15 people",
-      tags: ["Workation Trip", "Himachal"],
-      description: "Unstructured mountain escape with options for 3-Day Weekend or 7-Day Workation with homestay, Wi-Fi, and forest trek.",
-      price: "₹8,999/- (Weekend) / ₹17,999/- (Workation)",
-      dates: [
-        { label: "12 Nov '26", status: "Available" },
-        { label: "19 Nov '26", status: "Available" }
-      ],
-      link: "https://traveleleven.in/itinerary/workation"
     },
     {
       id: "madhyamaheshwar",
@@ -456,26 +528,11 @@ const TRAVEL_ELEVEN_DATA = {
       groupSize: "6-15 people",
       tags: ["Panch Kedar", "Chaukhamba Views"],
       description: "Sacred Panch Kedar pilgrimage to Madhyamaheshwar at 11,473 ft with Budha Madhyamaheshwar sunrise.",
-      price: "₹9,999/-",
+      price: "₹10,999/-",
       dates: [],
       status: "Season Over",
       season_note: "Season is over now due to winter/snow. Reopens next year in April/May.",
       link: "https://traveleleven.in/itinerary/madhyamaheshwar"
-    },
-    {
-      id: "bhutan",
-      name: "Bhutan Expedition - Land of the Thunder Dragon",
-      location: "Bhutan (Thimphu, Punakha, Paro, Phobjikha)",
-      duration: "8D/7N",
-      groupSize: "6-15 people",
-      tags: ["International Expedition", "Tiger's Nest Hike", "Thimphu Tshechu Festival", "Phobjikha Glacial Valley", "Flights Included"],
-      description: "An 8-day Himalayan journey through Bhutan's sacred valleys, ancient dzongs, Phobjikha glacial meadows, Thimphu Tshechu Festival, and the iconic cliffside Tiger's Nest Monastery.",
-      price: "₹49,999/- (Special Introductory Offer - Flights & Full Package Included)",
-      dates: [
-        { label: "21 Nov '26", status: "Available" },
-        { label: "19 Dec '26", status: "Available" }
-      ],
-      link: "https://traveleleven.in/itinerary/bhutan"
     }
   ]
 };
@@ -507,24 +564,27 @@ CRITICAL INFORMATION DISCLOSURE RULES (NEVER VIOLATE):
    - ONLY send the itinerary link if the customer EXPLICITLY asks for the itinerary (e.g., "send itinerary", "itinerary link", "details?").
 
 3. SEASON OVER / CLOSED LOCATIONS RULE (CRITICAL):
-   - The season is OVER for high-altitude locations:
+   - The season is OVER for high-altitude locations due to winter/snow:
      • Yulla Kanda Trek (Kinnaur, Himachal)
      • Zanskar / Gumbok Rangan (Ladakh)
      • Madhyamaheshwar Trek (Uttarakhand)
    - If someone asks for Yulla Kanda, Zanskar, Gumbok Rangan, Madhyamaheshwar, or any destination where fixed departures are closed:
      - Clearly state: We don't have any fixed departures right now as the season is over for Yulla, Zanskar, and Madhyamaheshwar.
      - Tell them: These locations will reopen next year in April / May!
-     - Let them know our ONLY active group departures right now are:
-       1. Hidden Himachal Workation: 12 Nov & 19 Nov
+     - Let them know our active upcoming group departures right now are:
+       1. Hidden Himachal: 19 Nov
        2. Bhutan Expedition: 21 Nov & 19 Dec
+       3. Kasar Devi & Chitai Golu: 20 Nov, 27 Nov & 04 Dec
+       4. Munsiyari & Kasar Devi: 25 Nov, 09 Dec & 23 Dec
+       5. Unseen Meghalaya: 12 Dec, 19 Dec & 26 Dec
    - If someone asks for customized trips (e.g. customized trip to Rajasthan, Kerala, Goa, etc.), briefly ask for their travel dates and group size.
 
 TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
 
 1. FIRST MESSAGE / CUSTOMER INQUIRY:
    - Identify which trip they are asking about from their message.
-   - If asking about Hidden Himachal or Bhutan: Confirm we have upcoming dates and ask ONE simple qualifying question: "Are you planning solo or group?" (or "Are you planning solo or with someone?").
-   - If asking about Yulla Kanda, Zanskar/Gumbok, Madhyamaheshwar, or other season-closed treks: Follow the SEASON OVER rule above (state that season is over, opens next year in April/May, and mention Hidden Himachal & Bhutan are currently active).
+   - If asking about an active group trip (Hidden Himachal, Bhutan, Kasar Devi, Munsiyari, Meghalaya): Confirm we have upcoming dates and ask ONE simple qualifying question: "Are you planning solo or group?" (or "Are you planning solo or with someone?").
+   - If asking about Yulla Kanda, Zanskar/Gumbok, Madhyamaheshwar, or other season-closed treks: Follow the SEASON OVER rule above (state that season is over, opens next year in April/May, and mention our active group departures).
    - Do NOT include price or itinerary link unless explicitly requested!
 
 2. WHEN CUSTOMER RESPONDS WITH SOLO OR GROUP:
@@ -551,24 +611,34 @@ TRAVEL ELEVEN INSTAGRAM DM LEAD FLOW:
 
 HIRING & CAREERS / WORK WITH US (CRITICAL INSTRUCTIONS):
 When anyone asks about hiring, job openings, internships, careers, freelance work, video editing, social media management, meta ads, or joining the Travel Eleven team:
-- We are currently looking for people for the following roles:
-  1. Social Media Intern: Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus).
-  2. Freelance Video Editor: Editing Reels, travel videos, and short form content.
-  3. Part Time Meta Ads Specialist: Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.
+- WE ARE CURRENTLY HIRING ONLY FOR:
+  • Part Time Meta Ads Specialist: Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.
+- ROLES ALREADY HIRED & CLOSED (DO NOT ACCEPT APPLICATIONS):
+  • Social Media Intern: POSITION ALREADY FILLED / HIRED.
+  • Freelance Video Editor: POSITION ALREADY FILLED / HIRED.
+  • If anyone asks for Social Media Intern or Video Editor roles, politely state:
+    "Our Social Media Intern and Video Editor roles have already been filled, so we are not accepting applications for them anymore. Currently, we are only hiring for the Part Time Meta Ads Specialist role!"
 - Work mode: Fully remote, India only.
 - APPLICATION FORM: https://tally.so/r/Eq5P4N
-- STRICT RULE - NEVER SHARE ANY EMAIL ADDRESS: DO NOT give any email address to anyone for hiring! Under no circumstances share an email.
-- Share ONLY the application form link: https://tally.so/r/Eq5P4N
-- Response format: Briefly mention the roles and ask them to apply by filling out the form:
-  "We're currently hiring for:
-  • Social Media Intern (post creation & carousels are a plus)
-  • Freelance Video Editor
-  • Part Time Meta Ads Specialist
-  (Work mode: Fully remote, India only)
+- STRICT RULE - NEVER SHARE ANY EMAIL ADDRESS FOR HIRING: Under no circumstances share an email address for hiring! Direct all applicants exclusively to the application form.
+- Response format when someone asks about openings:
+  "We're currently hiring only for:
+  • Part Time Meta Ads Specialist (Remote, India only)
+
+  (Note: Social Media Intern and Video Editor positions are already filled)
 
   Please fill out our application form here: https://tally.so/r/Eq5P4N
-  Our team will review your application and reach out for the next steps!"
+  Our team will review your application and reach out for next steps!"
 - CRITICAL: Never ask job applicants "planning solo or group?" and never send them trip itineraries or trek prices!
+
+COLLABORATIONS & PARTNERSHIPS RULE (CRITICAL):
+- When anyone asks about collaborations, influencer partnerships, content creator barter/collabs, brand partnerships, sponsorships, B2B tie-ups, or vendor proposals:
+  - STRICT RULE: NEVER GIVE ANY WHATSAPP NUMBER OR PHONE NUMBER!
+  - State clearly that all collaboration and partnership proposals are handled exclusively via email:
+    • For Creator / Influencer Collaborations: collabs@traveleleven.in
+    • For Brand & Business Partnerships: partners@traveleleven.in
+  - Example reply:
+    "For creator and influencer collaborations, please email collabs@traveleleven.in! For brand or business partnerships, please reach out to partners@traveleleven.in."
 
 UPCOMING BATCHES ONLY RULE - CRITICAL:
 - Today's current date is dynamically provided in the prompt context.
@@ -578,6 +648,7 @@ UPCOMING BATCHES ONLY RULE - CRITICAL:
 WHATSAPP NUMBER - CRITICAL RULE:
 - Ask for it AT MOST ONCE per chat.
 - Never ask for it on general questions or small talk—only when they express clear booking intent.
+- NEVER give out a WhatsApp number for partnerships, collabs, or job applicants!
 
 KNOWLEDGE BASE:
 ${JSON.stringify(TRAVEL_ELEVEN_DATA, null, 2)}
@@ -596,6 +667,9 @@ function findTrip(query) {
     if ((q.includes('workation') || q.includes('himachal') || q.includes('work')) && id === 'workation') return true;
     if ((q.includes('madhyamaheshwar') || q.includes('madhyamaheswar') || q.includes('madhya') || q.includes('maheshwar') || q.includes('maheswar') || q.includes('mm') || q.includes('kedar')) && id === 'madhyamaheshwar') return true;
     if ((q.includes('bhutan') || q.includes('taktsang') || q.includes('tiger') || q.includes('tshechu') || q.includes('thimphu') || q.includes('paro') || q.includes('punakha')) && id === 'bhutan') return true;
+    if ((q.includes('meghalaya') || q.includes('wari chora') || q.includes('krem') || q.includes('cherrapunji') || q.includes('shillong') || q.includes('dawki') || q.includes('living root')) && id === 'meghalaya') return true;
+    if ((q.includes('kasardevi') || q.includes('kasar') || q.includes('chitai') || q.includes('golu') || q.includes('almora') || q.includes('jageshwar')) && id === 'kasardevi') return true;
+    if ((q.includes('munsiyari') || q.includes('munsiari') || q.includes('panchachuli') || q.includes('birthi')) && id === 'munsiyari') return true;
     return false;
   });
 }
@@ -896,6 +970,7 @@ if (!senderId || !messageText) continue;
         const phoneMatch = messageText.match(/(?:\+?91[\s-]*)?[6-9]\d{4}[\s-]*\d{5}\b/) || messageText.match(/\b[6-9]\d{9}\b/);
         const isHiringQuery = /\b(hiring|intern|internship|job|jobs|vacancy|vacancies|career|careers|resume|cv|portfolio|video editor|video editing|meta ads|social media intern)\b/i.test(lowerMsg) ||
           (/\b(work|join)\b/i.test(lowerMsg) && /\b(team|us|you|company|agency)\b/i.test(lowerMsg));
+        const isCollabQuery = /\b(collab|collaboration|collaborate|sponsor|sponsorship|influencer|creator|barter|partnership|partner|b2b|tie-up)\b/i.test(lowerMsg);
 
         const hotKeywords = [
           'how to book', 'want to book', 'i want to book', 'how do i book', 'book slot',
@@ -904,8 +979,8 @@ if (!senderId || !messageText) continue;
           'how to proceed', 'seats available', 'are seats available', 'how many seats',
           'call me', 'can someone call', 'want to go ahead', 'going ahead', 'reserve my seat'
         ];
-        const isHotIntent = !isHiringQuery && hotKeywords.some(kw => lowerMsg.includes(kw));
-        const isHotLead = phoneMatch || isHotIntent;
+        const isHotIntent = !isHiringQuery && !isCollabQuery && hotKeywords.some(kw => lowerMsg.includes(kw));
+        const isHotLead = phoneMatch || isHotIntent || isCollabQuery;
 
         if (isHotLead) {
           const phone = phoneMatch ? phoneMatch[0] : '';
@@ -913,7 +988,7 @@ if (!senderId || !messageText) continue;
 
           if (!loggedHotToSheet.has(senderId)) {
             loggedHotToSheet.add(senderId);
-            await logToSheet(isHiringQuery ? 'job-applicant' : 'hot', plainLabel(senderId), phone || 'N/A', messageText);
+            await logToSheet(isHiringQuery ? 'job-applicant' : (isCollabQuery ? 'partnership' : 'hot'), plainLabel(senderId), phone || 'N/A', messageText);
           }
 
           // Auto-pause AI for this traveler/applicant so the human team can take over seamlessly
@@ -941,10 +1016,16 @@ if (!senderId || !messageText) continue;
             { text: "🏆 Deal Won", callback_data: `cb_won_${senderId}` }
           ]);
 
-          const alertTitle = isHiringQuery ? `💼 <b>JOB APPLICANT / HIRING INQUIRY</b>` : `🔥 <b>HOT LEAD DETECTED!</b>`;
+          const alertTitle = isHiringQuery 
+            ? `💼 <b>JOB APPLICANT / HIRING INQUIRY</b>` 
+            : (isCollabQuery 
+              ? `🤝 <b>COLLABORATION / PARTNERSHIP INQUIRY</b>` 
+              : `🔥 <b>HOT LEAD DETECTED!</b>`);
           const reasonText = isHiringQuery
             ? `Job Applicant Inquiry (${phone ? `Phone: <code>${phone}</code>` : `Message: "${escapeTelegramHtml(messageText)}"`})`
-            : (phoneMatch ? `Shared Phone Number (<code>${phone}</code>)` : `Clear Buying Intent ("${escapeTelegramHtml(messageText)}")`);
+            : (isCollabQuery
+              ? `Collab/Partnership Inquiry (${phone ? `Phone: <code>${phone}</code>` : `Message: "${escapeTelegramHtml(messageText)}"`})`
+              : (phoneMatch ? `Shared Phone Number (<code>${phone}</code>)` : `Clear Buying Intent ("${escapeTelegramHtml(messageText)}")`));
 
           const msgId = await notifyTelegram(
             `${alertTitle}\n\n` +
@@ -1164,12 +1245,21 @@ app.post('/telegram-webhook', async (req, res) => {
         `--------------------------------------------\n` +
         `📝 <b>Application Form:</b> https://tally.so/r/Eq5P4N\n` +
         `🏠 <b>Work Mode:</b> Fully remote, India only\n\n` +
-        `<b>Open Roles:</b>\n` +
-        `1. <b>Social Media Intern:</b> Content planning, captions, trends, and Instagram management (post creation & carousels would be a plus).\n` +
-        `2. <b>Freelance Video Editor:</b> Editing Reels, travel videos, and short form content.\n` +
-        `3. <b>Part Time Meta Ads Specialist:</b> Managing Instagram and Facebook ad campaigns, lead generation, and campaign optimization.\n\n` +
+        `<b>Active Opening:</b>\n` +
+        `1. <b>Part Time Meta Ads Specialist:</b> Managing Instagram & Facebook ad campaigns, lead generation, and campaign optimization.\n\n` +
+        `<b>Positions Filled (Closed):</b>\n` +
+        `• <i>Social Media Intern:</i> Filled / Closed ✅\n` +
+        `• <i>Freelance Video Editor:</i> Filled / Closed ✅\n\n` +
         `<i>Please apply directly via the form: https://tally.so/r/Eq5P4N</i>`;
       await notifyTelegram(hiringText);
+    } else if (lowerMsg === '/collab' || lowerMsg === 'collab' || lowerMsg === '/partnership' || lowerMsg === 'partnership' || lowerMsg === '/partnerships' || lowerMsg === 'partnerships') {
+      const collabText =
+        `🤝 <b>TRAVEL ELEVEN — COLLABORATIONS & PARTNERSHIPS</b>\n` +
+        `--------------------------------------------\n` +
+        `📸 <b>Creator & Influencer Collabs:</b> <code>collabs@traveleleven.in</code>\n` +
+        `🏢 <b>Brand & Business Partnerships:</b> <code>partners@traveleleven.in</code>\n\n` +
+        `⚠️ <b>Strict Policy:</b> No WhatsApp contact is shared for collaborations or partnerships. All proposals are accepted via email only.`;
+      await notifyTelegram(collabText);
     } else if (lowerMsg === '/batches' || lowerMsg === 'batches' || lowerMsg === 'batch list' || lowerMsg === '/batch') {
       let batchText = `📅 <b>UPCOMING ACTIVE TRIP BATCHES (${TRAVEL_ELEVEN_DATA.group_departures.length} TRIPS)</b>\n--------------------------------------------\n`;
       for (const trip of TRAVEL_ELEVEN_DATA.group_departures) {
@@ -1197,14 +1287,14 @@ app.post('/telegram-webhook', async (req, res) => {
       const firstSpaceIdx = restText.search(/\s/);
 
       if (firstSpaceIdx === -1 || !restText) {
-        await notifyTelegram(`⚠️ Usage: <code>/addbatch [trip_id] [date_label]</code>\n\nExample:\n<code>/addbatch gumbok 15 Oct '26</code>\n<code>/addbatch madhyamaheshwar 30 Sep '26 (Fast Filling)</code>`);
+        await notifyTelegram(`⚠️ Usage: <code>/addbatch [trip_id] [date_label]</code>\n\nExample:\n<code>/addbatch workation 19 Nov '26</code>\n<code>/addbatch bhutan 21 Nov '26 (Fast Filling)</code>`);
       } else {
         const tripQuery = restText.substring(0, firstSpaceIdx).trim();
         const dateLabel = restText.substring(firstSpaceIdx).trim();
         const trip = findTrip(tripQuery);
 
         if (!trip) {
-          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>, <code>bhutan</code>.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>workation</code>, <code>bhutan</code>, <code>kasardevi</code>, <code>munsiyari</code>, <code>meghalaya</code>, <code>gumbok</code>, <code>yulla</code>, <code>madhyamaheshwar</code>.`);
         } else {
           let status = "Available";
           if (/fast filling|filling|fast/i.test(dateLabel)) {
@@ -1225,14 +1315,14 @@ app.post('/telegram-webhook', async (req, res) => {
       const firstSpaceIdx = restText.search(/\s/);
 
       if (firstSpaceIdx === -1 || !restText) {
-        await notifyTelegram(`⚠️ Usage: <code>/removebatch [trip_id] [date_label]</code>\n\nExample:\n<code>/removebatch gumbok 15 Oct</code>`);
+        await notifyTelegram(`⚠️ Usage: <code>/removebatch [trip_id] [date_label]</code>\n\nExample:\n<code>/removebatch workation 19 Nov</code>`);
       } else {
         const tripQuery = restText.substring(0, firstSpaceIdx).trim();
         const dateQuery = restText.substring(firstSpaceIdx).trim().toLowerCase();
         const trip = findTrip(tripQuery);
 
         if (!trip) {
-          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>gumbok</code>, <code>yulla</code>, <code>workation</code>, <code>madhyamaheshwar</code>, <code>bhutan</code>.`);
+          await notifyTelegram(`❌ Trip matching <code>${tripQuery}</code> not found!\nAvailable trips: <code>workation</code>, <code>bhutan</code>, <code>kasardevi</code>, <code>munsiyari</code>, <code>meghalaya</code>, <code>gumbok</code>, <code>yulla</code>, <code>madhyamaheshwar</code>.`);
         } else {
           const idx = trip.dates.findIndex(d => d.label.toLowerCase().includes(dateQuery));
           if (idx === -1) {
